@@ -13,7 +13,7 @@ import { WindowControlsComponent } from '../../components/window-controls/window
       <div class="w-14 shrink-0"></div>
 
       <div class="flex flex-1 justify-center" data-tauri-drag-region>
-        <label class="relative w-full max-w-md">
+        <!-- <label class="relative w-full max-w-md">
           <svg
             class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
             width="16"
@@ -33,7 +33,7 @@ import { WindowControlsComponent } from '../../components/window-controls/window
             class="w-full rounded-full border border-white/10 bg-[#1a1a1f] py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-[#e8192c]/50 focus:ring-1 focus:ring-[#e8192c]/30"
             data-tauri-drag-region="false"
           />
-        </label>
+        </label> -->
       </div>
 
       <ui-window-controls />

@@ -65,7 +65,7 @@ fn run_winget_install(winget_id: &str) -> Result<String, String> {
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{stdout}\n{stderr}").trim().to_string();
 
-  if output.status.success() {
+    if output.status.success() {
         return Ok(if combined.is_empty() {
             "Instalado com sucesso".to_string()
         } else {
@@ -84,7 +84,10 @@ fn run_winget_install(winget_id: &str) -> Result<String, String> {
     }
 
     Err(if combined.is_empty() {
-        format!("winget saiu com código {}", output.status.code().unwrap_or(-1))
+        format!(
+            "winget saiu com código {}",
+            output.status.code().unwrap_or(-1)
+        )
     } else {
         combined
     })
