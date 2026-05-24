@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Easy Start",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "identifier": "com.easystart.dev",
   "build": {
     "frontendDist": "../dist/easy-start/browser",
@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
     "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",

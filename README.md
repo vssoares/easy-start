@@ -58,9 +58,10 @@ O script configura permissões **Read and write** do Actions e o secret `TAURI_S
 # ou: npm run release:prepare -- 1.0.1
 ```
 
-O script cria a branch `release/1.0.1`, atualiza `src-tauri/tauri.conf.json`, `package.json`, `package-lock.json` e `src-tauri/Cargo.toml`, e faz o commit. O **push** fica com você:
+O script atualiza as versões, **commita na branch atual** (ex.: `main`) e em seguida cria a branch `release/1.0.1` apontando para o mesmo commit. O **push** fica com você:
 
 ```powershell
+git push origin main
 git push -u origin release/1.0.1
 ```
 

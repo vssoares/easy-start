@@ -1,9 +1,9 @@
-# Prepara uma release: cria branch, sincroniza versões e commita (sem push).
+# Prepara uma release: atualiza versões, commita na branch atual e cria a branch de release.
 #
 # Uso:
 #   .\scripts\prepare-release.ps1 1.0.1
 #   .\scripts\prepare-release.ps1 -Version 1.0.1
-#   .\scripts\prepare-release.ps1 v1.0.1 -BranchName release
+#   .\scripts\prepare-release.ps1 v1.0.1 -BranchName release/1.0.1
 
 param(
   [Parameter(Mandatory = $true, Position = 0)]
@@ -43,11 +43,9 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   Write-Error 'Git não encontrado no PATH.'
 }
 
-$pending = git status --porcelain
-if ($pending) {
-  Write-Host 'Alterações pendentes serão incluídas no commit de release:' -ForegroundColor Yellow
-  Write-Host $pending
-  Write-Host ''
+$sourceBranch = git branch --show-current
+if (-not $sourceBranch) {
+  Write-Error 'Não foi possível identificar a branch atual (repositório detached HEAD?).'
 }
 
 $existing = git branch --list $BranchName
@@ -55,10 +53,17 @@ if ($existing) {
   Write-Error "A branch '$BranchName' já existe. Escolha outro nome com -BranchName ou apague a branch local."
 }
 
+$pending = git status --porcelain
+if ($pending) {
+  Write-Host "Alterações pendentes em '$sourceBranch' serão incluídas no commit de release:" -ForegroundColor Yellow
+  Write-Host $pending
+  Write-Host ''
+}
+
 $files = @{
   'src-tauri/tauri.conf.json' = {
     param($c, $v)
-  $c -replace '("version"\s*:\s*")[^"]+(")', "`${1}$v`${2}"
+    $c -replace '("version"\s*:\s*")[^"]+(")', "`${1}$v`${2}"
   }
   'package.json' = {
     param($c, $v)
@@ -74,10 +79,7 @@ $files = @{
   }
 }
 
-Write-Host "Criando branch '$BranchName' ..."
-git checkout -b $BranchName
-
-Write-Host "Atualizando versão para $Version ..."
+Write-Host "Atualizando versão para $Version em '$sourceBranch' ..."
 foreach ($relPath in $files.Keys) {
   $path = Join-Path $repoRoot $relPath
   if (-not (Test-Path $path)) {
@@ -95,15 +97,20 @@ foreach ($relPath in $files.Keys) {
 git add -A
 git commit -m "chore(release): v$Version"
 
+Write-Host "Criando branch '$BranchName' a partir de '$sourceBranch' ..."
+git checkout -b $BranchName
+
 Write-Host ''
 Write-Host 'Release preparada localmente.' -ForegroundColor Green
-Write-Host "  Branch:  $BranchName"
-Write-Host "  Versão:  $Version"
+Write-Host "  Commit em:       $sourceBranch"
+Write-Host "  Branch release:  $BranchName (checkout atual)"
+Write-Host "  Versão:          $Version"
 Write-Host ''
 Write-Host 'Próximo passo (manual):'
+Write-Host "  git push origin $sourceBranch"
 Write-Host "  git push -u origin $BranchName"
 Write-Host ''
 Write-Host 'Depois no GitHub:'
-Write-Host '  - O workflow Release roda ao receber push na branch release ou release/* (conforme seu workflow), ou'
+Write-Host '  - O workflow Release roda ao receber push na branch release ou release/*, ou'
 Write-Host '  - Actions → Release → Run workflow'
 Write-Host '  - Revise o rascunho do release e publique quando estiver pronto.'
