@@ -1,10 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { isTauri } from '@tauri-apps/api/core';
 
-export type UpdateStatus = 'idle' | 'checking' | 'available' | 'installing' | 'error';
+export type UpdateStatus = 'idle' | 'checking' | 'available' | 'installing' | 'error' | 'skipped';
 
-const UPDATE_ENDPOINT =
-  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json';
+const UPDATE_ENDPOINTS = [
+  'https://vssoares.github.io/easy-start/latest.json',
+  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json',
+];
 
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
@@ -17,7 +19,8 @@ export class UpdateService {
   readonly hasUpdate = () => this.status() === 'available' && this.availableVersion() !== null;
 
   async init(): Promise<void> {
-    if (!isTauri()) {
+    if (!this.shouldCheckUpdates()) {
+      this.status.set('skipped');
       return;
     }
 
@@ -32,7 +35,8 @@ export class UpdateService {
   }
 
   async checkForUpdate(): Promise<void> {
-    if (!isTauri()) {
+    if (!this.shouldCheckUpdates()) {
+      this.status.set('skipped');
       return;
     }
 
@@ -105,6 +109,19 @@ export class UpdateService {
     }
   }
 
+  private shouldCheckUpdates(): boolean {
+    if (!isTauri()) {
+      return false;
+    }
+
+    const host = globalThis.location?.hostname ?? '';
+    if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+      return false;
+    }
+
+    return true;
+  }
+
   private describeCheckError(err: unknown): string {
     const message = err instanceof Error ? err.message : String(err);
     const lower = message.toLowerCase();
@@ -116,14 +133,14 @@ export class UpdateService {
       lower.includes('successful status')
     ) {
       return (
-        'Não foi possível buscar atualizações (manifesto indisponível). ' +
-        'Confira se o release no GitHub está publicado (não em rascunho) e contém latest.json. ' +
-        UPDATE_ENDPOINT
+        'Atualização indisponível: o manifesto não foi encontrado no GitHub. ' +
+        'Publique o release (não rascunho) com latest.json ou ative GitHub Pages (branch gh-pages). ' +
+        `URLs: ${UPDATE_ENDPOINTS.join(' · ')}`
       );
     }
 
     if (lower.includes('signature') || lower.includes('assinatura')) {
-      return 'Falha na verificação de assinatura. O build de release precisa usar a mesma chave TAURI_SIGNING_PRIVATE_KEY.';
+      return 'Assinatura inválida. O CI precisa do secret TAURI_SIGNING_PRIVATE_KEY igual à pubkey do app.';
     }
 
     return message || 'Falha ao verificar atualizações';

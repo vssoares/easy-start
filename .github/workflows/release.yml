@@ -9,10 +9,13 @@ on:
     tags:
       - 'easy-start-v*'
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   publish:
-    permissions:
-      contents: write
     runs-on: windows-latest
 
     steps:
@@ -36,6 +39,7 @@ jobs:
         run: npm ci
 
       - uses: tauri-apps/tauri-action@v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -48,9 +52,73 @@ jobs:
 
             Baixe o instalador `.exe` ou `.msi` nos assets abaixo.
             O arquivo `latest.json` é usado pelo app para detectar atualizações.
-          # Rascunho impede /releases/latest/download/latest.json — o updater não funciona.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           retryAttempts: 3
+
+      - name: Localizar latest.json do build
+        id: manifest
+        shell: pwsh
+        run: |
+          $manifest = Get-ChildItem -Path src-tauri/target -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $manifest) {
+            throw 'latest.json não encontrado após o build. Verifique TAURI_SIGNING_PRIVATE_KEY e createUpdaterArtifacts.'
+          }
+          Write-Host "Manifesto: $($manifest.FullName)"
+          "path=$($manifest.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Publicar latest.json no GitHub Pages (URL pública)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path updater-pages | Out-Null
+          Copy-Item -Force "${{ steps.manifest.outputs.path }}" updater-pages/latest.json
+
+      - name: Deploy GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: updater-pages
+          publish_branch: gh-pages
+
+      - name: Verificar manifesto (API autenticada)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "easy-start-v${{ steps.tauri.outputs.appVersion }}"
+          $api = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"
+          $release = Invoke-RestMethod -Uri $api -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+          }
+          $asset = $release.assets | Where-Object { $_.name -eq 'latest.json' }
+          if (-not $asset) {
+            throw "Asset latest.json ausente no release $tag"
+          }
+          Write-Host "Release OK: $($release.html_url)"
+          Write-Host "latest.json: $($asset.browser_download_url)"
+
+      - name: Verificar GitHub Pages
+        shell: pwsh
+        run: |
+          Start-Sleep -Seconds 15
+          $pagesUrl = "https://${{ github.repository_owner }}.github.io/easy-start/latest.json"
+          Write-Host "Testando: $pagesUrl"
+          $max = 6
+          for ($i = 1; $i -le $max; $i++) {
+            try {
+              $r = Invoke-WebRequest -Uri $pagesUrl -UseBasicParsing
+              if ($r.StatusCode -eq 200) {
+                Write-Host "GitHub Pages OK (tentativa $i)"
+                exit 0
+              }
+            } catch {
+              Write-Host "Tentativa $i/$max falhou, aguardando..."
+              Start-Sleep -Seconds 10
+            }
+          }
+          Write-Warning "Pages ainda não respondeu. Ative GitHub Pages (branch gh-pages) em Settings → Pages."
