@@ -11,13 +11,10 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 # Actions em Node 24 (Node 20 deprecado nos runners — jun/2026)
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Registry sparse + compilação release mais rápida (só CI)
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
   CARGO_INCREMENTAL: 0
   CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 32
@@ -81,63 +78,15 @@ jobs:
             Instalador Windows e atualização automática para esta versão.
 
             Baixe o instalador `.exe` nos assets abaixo.
-            O arquivo `latest.json` é usado pelo app para detectar atualizações.
+            O manifesto de atualização: https://github.com/vssoares/easy-start/releases/latest/download/latest.json
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
           retryAttempts: 1
-          # CI: só NSIS (WiX/MSI dobra o tempo de bundle no Windows)
           args: --config src-tauri/tauri.ci.conf.json --ci
 
-      - name: Localizar latest.json do build
-        id: manifest
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # tauri-action grava latest.json na raiz do repo (não em src-tauri/target)
-          $manifest = Get-Item -Path latest.json -ErrorAction SilentlyContinue
-          if (-not $manifest) {
-            $manifest = Get-ChildItem -Path src-tauri/target -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
-              Sort-Object LastWriteTime -Descending |
-              Select-Object -First 1
-          }
-          if (-not $manifest) {
-            Write-Host 'latest.json não local no disco; baixando do release...'
-            $tag = "easy-start-v${{ steps.tauri.outputs.appVersion }}"
-            $api = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"
-            $release = Invoke-RestMethod -Uri $api -Headers @{
-              Authorization = "Bearer $env:GH_TOKEN"
-              Accept = 'application/vnd.github+json'
-            }
-            $asset = $release.assets | Where-Object { $_.name -eq 'latest.json' }
-            if (-not $asset) {
-              throw "latest.json ausente. Verifique TAURI_SIGNING_PRIVATE_KEY, createUpdaterArtifacts e logs do tauri-action (Signature not found)."
-            }
-            Invoke-WebRequest -Uri $asset.browser_download_url -Headers @{
-              Authorization = "Bearer $env:GH_TOKEN"
-              Accept = 'application/octet-stream'
-            } -OutFile latest.json
-            $manifest = Get-Item latest.json
-          }
-          Write-Host "Manifesto: $($manifest.FullName)"
-          "path=$($manifest.FullName)" >> $env:GITHUB_OUTPUT
-
-      - name: Publicar latest.json no GitHub Pages (URL pública)
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path updater-pages | Out-Null
-          Copy-Item -Force "${{ steps.manifest.outputs.path }}" updater-pages/latest.json
-
-      - name: Deploy GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: updater-pages
-          publish_branch: gh-pages
-
-      - name: Verificar manifesto (API autenticada)
+      - name: Verificar latest.json no release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -153,25 +102,17 @@ jobs:
             throw "Asset latest.json ausente no release $tag"
           }
           Write-Host "Release OK: $($release.html_url)"
-          Write-Host "latest.json: $($asset.browser_download_url)"
+          Write-Host "latest.json (tag): $($asset.browser_download_url)"
 
-      - name: Verificar GitHub Pages
+      - name: Verificar URL pública do updater
         shell: pwsh
         run: |
-          Start-Sleep -Seconds 5
-          $pagesUrl = "https://${{ github.repository_owner }}.github.io/easy-start/latest.json"
-          Write-Host "Testando: $pagesUrl"
-          $max = 3
-          for ($i = 1; $i -le $max; $i++) {
-            try {
-              $r = Invoke-WebRequest -Uri $pagesUrl -UseBasicParsing
-              if ($r.StatusCode -eq 200) {
-                Write-Host "GitHub Pages OK (tentativa $i)"
-                exit 0
-              }
-            } catch {
-              Write-Host "Tentativa $i/$max falhou, aguardando..."
-              Start-Sleep -Seconds 5
-            }
+          $url = 'https://github.com/vssoares/easy-start/releases/latest/download/latest.json'
+          Write-Host "Testando: $url"
+          $r = Invoke-WebRequest -Uri $url -UseBasicParsing
+          if ($r.StatusCode -ne 200) {
+            throw "Manifesto público retornou $($r.StatusCode)"
           }
-          Write-Warning "Pages ainda não respondeu. Ative GitHub Pages (branch gh-pages) em Settings → Pages."
+          $json = $r.Content | ConvertFrom-Json
+          Write-Host "Versão no manifesto: $($json.version)"
+          Write-Host 'Updater OK (GitHub Releases /latest/download/)'

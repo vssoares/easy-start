@@ -1,16 +1,17 @@
-# Publica latest.json local no GitHub Pages (correção manual quando o CI não subiu o manifesto).
-# Requer: build com `npm run tauri:build` e chave de assinatura já usada no app.
+# Envia latest.json local para o release no GitHub (correção manual).
+# Requer: gh CLI autenticado e build com TAURI_SIGNING_PRIVATE_KEY.
 
 param(
-  [string] $Version = ''
+  [string] $Version = '',
+  [string] $Tag = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-  Write-Error 'Git não encontrado.'
+if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+  Write-Error 'GitHub CLI (gh) não encontrado. Instale: https://cli.github.com/'
 }
 
 $manifest = Get-Item -Path (Join-Path $repoRoot 'latest.json') -ErrorAction SilentlyContinue
@@ -21,7 +22,7 @@ if (-not $manifest) {
 }
 
 if (-not $manifest) {
-  Write-Error 'latest.json não encontrado. Rode: npm run tauri:build (com TAURI_SIGNING_PRIVATE_KEY). O arquivo fica na raiz do projeto após o build via CI.'
+  Write-Error 'latest.json não encontrado. Rode: npm run tauri:build (com TAURI_SIGNING_PRIVATE_KEY).'
 }
 
 if (-not $Version) {
@@ -29,37 +30,15 @@ if (-not $Version) {
   $Version = $conf.version
 }
 
-$workDir = Join-Path $env:TEMP "easy-start-updater-pages"
-if (Test-Path $workDir) {
-  Remove-Item -Recurse -Force $workDir
-}
-New-Item -ItemType Directory -Path $workDir | Out-Null
-Copy-Item $manifest.FullName (Join-Path $workDir 'latest.json')
-
-Write-Host "Publicando latest.json (v$Version) na branch gh-pages ..." -ForegroundColor Cyan
-
-$cloneDir = Join-Path $env:TEMP 'easy-start-gh-pages'
-if (Test-Path $cloneDir) {
-  Remove-Item -Recurse -Force $cloneDir
+if (-not $Tag) {
+  $Tag = "easy-start-v$Version"
 }
 
-git clone --branch gh-pages --single-branch (git remote get-url origin) $cloneDir 2>$null
-if ($LASTEXITCODE -ne 0) {
-  git clone --depth 1 (git remote get-url origin) $cloneDir
-  Set-Location $cloneDir
-  git checkout --orphan gh-pages
-  git rm -rf . 2>$null
-} else {
-  Set-Location $cloneDir
-}
-
-Copy-Item (Join-Path $workDir 'latest.json') ./latest.json -Force
-git add latest.json
-git commit -m "chore(updater): manifest v$Version"
-git push origin gh-pages
+Write-Host "Enviando latest.json para o release $Tag ..." -ForegroundColor Cyan
+gh release upload $Tag $manifest.FullName --clobber
 
 Set-Location $repoRoot
 Write-Host ''
 Write-Host 'Concluído. Teste:' -ForegroundColor Green
-Write-Host '  https://vssoares.github.io/easy-start/latest.json'
+Write-Host '  https://github.com/vssoares/easy-start/releases/latest/download/latest.json'
 Write-Host '  .\scripts\verify-update-manifest.ps1'

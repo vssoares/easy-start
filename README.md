@@ -39,7 +39,7 @@ O instalador fica em `src-tauri/target/release/bundle/`.
 
 ## Releases no GitHub
 
-O workflow `.github/workflows/release.yml` publica instaladores e o manifest `latest.json` para atualização automática no app.
+O workflow `.github/workflows/release.yml` publica instaladores e o manifest `latest.json` no **GitHub Release** (`/releases/latest/download/latest.json`) para atualização automática no app.
 
 ### Configuração (uma vez)
 
@@ -75,10 +75,11 @@ Com o app instalado, ao abrir a interface verifica o GitHub. Se houver versão m
 
 ### O updater não aparece?
 
-1. **Release em rascunho** — `/releases/latest/download/latest.json` só funciona em releases **publicados**.
+1. **Release em rascunho** — `https://github.com/vssoares/easy-start/releases/latest/download/latest.json` só funciona em releases **publicados**.
 2. **Falta `latest.json`** — o CI precisa do secret `TAURI_SIGNING_PRIVATE_KEY` e `createUpdaterArtifacts: true`.
 3. **Versão igual** — o app só oferece update se a versão no GitHub for **maior** que a instalada (ex.: instalado `1.0.6`, release `1.0.7`).
 4. **App em dev** (`tauri dev`) — use o instalador `.exe` de produção para testar updates.
+5. **Build antigo** — apps já instalados usam o endpoint gravado no instalador; publique uma versão nova com este endpoint para que usuários antigos recebam o update.
 
 Verifique o manifesto:
 

@@ -3,10 +3,8 @@ import { isTauri } from '@tauri-apps/api/core';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'installing' | 'error' | 'skipped';
 
-const UPDATE_ENDPOINTS = [
-  'https://vssoares.github.io/easy-start/latest.json',
-  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json',
-];
+const UPDATE_ENDPOINT =
+  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json';
 
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
@@ -133,9 +131,9 @@ export class UpdateService {
       lower.includes('successful status')
     ) {
       return (
-        'Atualização indisponível: o manifesto não foi encontrado no GitHub. ' +
-        'Publique o release (não rascunho) com latest.json ou ative GitHub Pages (branch gh-pages). ' +
-        `URLs: ${UPDATE_ENDPOINTS.join(' · ')}`
+        'Atualização indisponível: o manifesto não foi encontrado no GitHub Releases. ' +
+        'Publique o release (não rascunho) com o asset latest.json. ' +
+        `URL: ${UPDATE_ENDPOINT}`
       );
     }
 
