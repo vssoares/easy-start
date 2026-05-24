@@ -43,3 +43,20 @@ textarea {
   background: #333;
   border-radius: 3px;
 }
+
+@keyframes skeleton-shimmer {
+  0% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+.skeleton-shimmer {
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  background: #252528;
+}

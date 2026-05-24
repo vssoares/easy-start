@@ -1,13 +1,28 @@
 mod install;
+mod nvm;
 
 use install::{check_winget, install_apps};
+use nvm::{
+    ensure_nvm, install_node_version, list_node_versions, node_manager_supported, nvm_status,
+    uninstall_node_version, use_node_version,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![install_apps, check_winget])
+        .invoke_handler(tauri::generate_handler![
+            install_apps,
+            check_winget,
+            nvm_status,
+            ensure_nvm,
+            list_node_versions,
+            install_node_version,
+            uninstall_node_version,
+            use_node_version,
+            node_manager_supported,
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
