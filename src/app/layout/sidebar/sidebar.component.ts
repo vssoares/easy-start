@@ -1,6 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavItem } from '../../models/program.model';
+import { UpdateService } from '../../services/update.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -77,7 +78,9 @@ import { NavItem } from '../../models/program.model';
               d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
             />
           </svg>
-          <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500"></span>
+          @if (updates.hasUpdate()) {
+            <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#e8192c]"></span>
+          }
         </button>
         <button
           type="button"
@@ -99,7 +102,9 @@ import { NavItem } from '../../models/program.model';
             <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
           </svg>
         </button>
-        <span class="mt-1 text-[9px] text-zinc-600">v5.20.1</span>
+        @if (updates.currentVersion()) {
+          <span class="mt-1 text-[9px] text-zinc-600">v{{ updates.currentVersion() }}</span>
+        }
       </div>
     </aside>
   `,
@@ -141,4 +146,5 @@ import { NavItem } from '../../models/program.model';
 })
 export class SidebarComponent {
   readonly items = input.required<NavItem[]>();
+  protected readonly updates = inject(UpdateService);
 }

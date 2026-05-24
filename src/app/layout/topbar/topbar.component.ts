@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AppUpdateComponent } from '../../components/app-update/app-update.component';
 import { WindowControlsComponent } from '../../components/window-controls/window-controls.component';
 
 @Component({
   selector: 'app-topbar',
-  imports: [FormsModule, WindowControlsComponent],
+  imports: [FormsModule, AppUpdateComponent, WindowControlsComponent],
   template: `
     <header
       class="flex h-12 shrink-0 items-center border-b border-white/5 bg-[#0f0f12] px-4"
@@ -12,7 +13,8 @@ import { WindowControlsComponent } from '../../components/window-controls/window
     >
       <div class="w-14 shrink-0"></div>
 
-      <div class="flex flex-1 justify-center" data-tauri-drag-region>
+      <div class="flex flex-1 items-center justify-center gap-3" data-tauri-drag-region>
+        <ui-app-update />
         <!-- <label class="relative w-full max-w-md">
           <svg
             class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"

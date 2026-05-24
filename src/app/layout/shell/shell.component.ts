@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NAV_ITEMS } from '../../data/programs.data';
+import { UpdateService } from '../../services/update.service';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
 
@@ -26,6 +27,11 @@ import { TopbarComponent } from '../topbar/topbar.component';
     }
   `,
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit {
+  private readonly updates = inject(UpdateService);
   readonly navItems = NAV_ITEMS;
+
+  ngOnInit(): void {
+    void this.updates.init();
+  }
 }

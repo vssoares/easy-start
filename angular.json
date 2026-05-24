@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "app-programs": {
+    "easy-start": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -55,10 +55,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "app-programs:build:production"
+              "buildTarget": "easy-start:build:production"
             },
             "development": {
-              "buildTarget": "app-programs:build:development"
+              "buildTarget": "easy-start:build:development"
             }
           },
           "defaultConfiguration": "development"

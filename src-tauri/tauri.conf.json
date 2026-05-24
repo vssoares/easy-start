@@ -1,10 +1,10 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "App Programs",
-  "version": "0.1.0",
-  "identifier": "com.appprograms.dev",
+  "productName": "Easy Start",
+  "version": "0.1.1",
+  "identifier": "com.easystart.dev",
   "build": {
-    "frontendDist": "../dist/app-programs/browser",
+    "frontendDist": "../dist/easy-start/browser",
     "devUrl": "http://localhost:4200",
     "beforeDevCommand": "npm run start",
     "beforeBuildCommand": "npm run build"
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "App Programs",
+        "title": "Easy Start",
         "width": 1400,
         "height": 900,
         "minWidth": 1024,
@@ -31,6 +31,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,5 +39,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0NDQ2MjRFNDc4M0ZCODMKUldTRCs0TkhUbUpFTkZxRmNUTE43RUdJcy9HMm5TM2Njc3ZDbktEOXlscXVMNzlUZVoreXZDUTYK",
+      "endpoints": [
+        "https://github.com/vssoares/easy-start/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
