@@ -250,11 +250,9 @@ export class NodePageComponent implements OnInit {
   versionSearch = '';
 
   ngOnInit(): void {
-    void this.bootstrap();
-  }
-
-  async bootstrap(): Promise<void> {
-    await this.node.refresh();
+    if (!this.node.data() && !this.node.loading()) {
+      void this.node.refresh();
+    }
   }
 
   isBusy(version: string): boolean {

@@ -9,22 +9,23 @@ export class NodeManagerService {
   readonly error = signal<string | null>(null);
   readonly data = signal<NodeVersionsResponse | null>(null);
 
+  private refreshTask: Promise<void> | null = null;
+
   async refresh(): Promise<void> {
     if (!isTauri()) {
       this.error.set('Gerenciador Node só funciona no app desktop (Tauri).');
       return;
     }
 
-    this.loading.set(true);
-    this.error.set(null);
+    if (this.refreshTask) {
+      return this.refreshTask;
+    }
 
+    this.refreshTask = this.runRefresh();
     try {
-      const response = await invoke<NodeVersionsResponse>('list_node_versions');
-      this.data.set(response);
-    } catch (err) {
-      this.error.set(err instanceof Error ? err.message : String(err));
+      await this.refreshTask;
     } finally {
-      this.loading.set(false);
+      this.refreshTask = null;
     }
   }
 
@@ -38,9 +39,9 @@ export class NodeManagerService {
     this.error.set(null);
 
     try {
-      const status = await invoke<NvmStatus>('ensure_nvm');
-      await this.refresh();
-      return status;
+      const response = await invoke<NodeVersionsResponse>('ensure_nvm');
+      this.data.set(response);
+      return response.status;
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : String(err));
       return null;
@@ -59,6 +60,20 @@ export class NodeManagerService {
 
   async use(version: string): Promise<void> {
     await this.runAction(version, 'use_node_version');
+  }
+
+  private async runRefresh(): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      const response = await invoke<NodeVersionsResponse>('list_node_versions');
+      this.data.set(response);
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : String(err));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   private async runAction(

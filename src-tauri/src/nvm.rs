@@ -3,6 +3,12 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, fs};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 const NVM_WINGET_ID: &str = "CoreyButler.NVMforWindows";
 const NVM_SETUP_URL: &str =
     "https://github.com/coreybutler/nvm-windows/releases/download/1.2.2/nvm-setup.exe";
@@ -39,38 +45,11 @@ struct NodeDistEntry {
     lts: serde_json::Value,
 }
 
-fn run_command(program: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new(program)
-        .args(args)
-        .output()
-        .map_err(|error| format!("Falha ao executar {program}: {error}"))?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let combined = if stderr.is_empty() {
-        stdout
-    } else if stdout.is_empty() {
-        stderr.clone()
-    } else {
-        format!("{stdout}\n{stderr}")
-    };
-
-    if output.status.success() {
-        Ok(combined)
-    } else {
-        Err(if combined.is_empty() {
-            format!("{program} falhou com código {}", output.status.code().unwrap_or(-1))
-        } else {
-            combined
-        })
-    }
-}
-
-fn run_powershell(script: &str) -> Result<String, String> {
-    run_command(
-        "powershell",
-        &["-NoProfile", "-NonInteractive", "-Command", script],
-    )
+fn new_command(program: &str) -> Command {
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
 }
 
 fn find_nvm_exe() -> Option<PathBuf> {
@@ -95,20 +74,6 @@ fn find_nvm_exe() -> Option<PathBuf> {
         }
     }
 
-    if let Ok(output) = Command::new("where.exe").arg("nvm").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .next()
-                .unwrap_or("")
-                .trim()
-                .to_string();
-            if !path.is_empty() {
-                return Some(PathBuf::from(path));
-            }
-        }
-    }
-
     None
 }
 
@@ -122,7 +87,7 @@ fn run_nvm(args: &[&str]) -> Result<String, String> {
         .parent()
         .ok_or_else(|| "Diretório do NVM inválido.".to_string())?;
 
-    let mut command = Command::new(&nvm);
+    let mut command = new_command(nvm.to_str().unwrap_or("nvm.exe"));
     command.args(args);
     command.current_dir(nvm_dir);
 
@@ -245,9 +210,17 @@ fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
 }
 
 fn fetch_available_versions() -> Result<Vec<(String, Option<String>)>, String> {
-    let json = run_powershell(
-        "(Invoke-WebRequest -UseBasicParsing 'https://nodejs.org/dist/index.json').Content",
-    )?;
+    let json = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|error| format!("Cliente HTTP: {error}"))?
+        .get("https://nodejs.org/dist/index.json")
+        .send()
+        .map_err(|error| format!("Falha ao buscar versões do Node: {error}"))?
+        .error_for_status()
+        .map_err(|error| format!("Resposta inválida do nodejs.org: {error}"))?
+        .text()
+        .map_err(|error| format!("Falha ao ler versões do Node: {error}"))?;
 
     let entries: Vec<NodeDistEntry> =
         serde_json::from_str(&json).map_err(|error| format!("Erro ao ler versões do Node: {error}"))?;
@@ -281,7 +254,7 @@ fn install_nvm_windows() -> Result<(), String> {
         return Ok(());
     }
 
-    let winget_result = Command::new("winget")
+    let winget_result = new_command("winget")
         .args([
             "install",
             "-e",
@@ -303,17 +276,25 @@ fn install_nvm_windows() -> Result<(), String> {
     let temp_dir = env::temp_dir();
     let installer = temp_dir.join("nvm-setup.exe");
 
-    let download_script = format!(
-        "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri '{NVM_SETUP_URL}' -OutFile '{}'",
-        installer.to_string_lossy()
-    );
-    run_powershell(&download_script)?;
+    let installer_bytes = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|error| format!("Cliente HTTP: {error}"))?
+        .get(NVM_SETUP_URL)
+        .send()
+        .map_err(|error| format!("Falha ao baixar NVM: {error}"))?
+        .error_for_status()
+        .map_err(|error| format!("Download do NVM inválido: {error}"))?
+        .bytes()
+        .map_err(|error| format!("Falha ao ler instalador NVM: {error}"))?;
+
+    fs::write(&installer, installer_bytes).map_err(|error| format!("Falha ao salvar NVM: {error}"))?;
 
     if !installer.exists() {
         return Err("Download do instalador NVM falhou.".to_string());
     }
 
-    let install_status = Command::new(&installer)
+    let install_status = new_command(installer.to_str().unwrap_or("nvm-setup.exe"))
         .args(["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"])
         .status()
         .map_err(|error| format!("Falha ao executar instalador NVM: {error}"))?;
@@ -327,9 +308,20 @@ fn install_nvm_windows() -> Result<(), String> {
     Ok(())
 }
 
-fn build_status() -> NvmStatus {
+fn active_version_from_list(installed: &[(String, bool)]) -> Option<String> {
+    installed
+        .iter()
+        .find(|(_, active)| *active)
+        .map(|(version, _)| version.clone())
+}
+
+fn build_status_with_list(list_output: Option<&str>) -> NvmStatus {
     let nvm_path = find_nvm_exe();
     let installed = nvm_path.is_some();
+
+    let installed_pairs = list_output
+        .map(parse_installed_versions)
+        .unwrap_or_default();
 
     let nvm_version = if installed {
         run_nvm(&["version"]).ok()
@@ -338,7 +330,9 @@ fn build_status() -> NvmStatus {
     };
 
     let current_version = if installed {
-        run_nvm(&["current"]).ok().map(|v| normalize_version(&v))
+        active_version_from_list(&installed_pairs).or_else(|| {
+            run_nvm(&["current"]).ok().map(|v| normalize_version(&v))
+        })
     } else {
         None
     };
@@ -351,11 +345,24 @@ fn build_status() -> NvmStatus {
     }
 }
 
+fn build_status() -> NvmStatus {
+    build_status_with_list(None)
+}
+
 fn build_versions_response() -> Result<NodeVersionsResponse, String> {
-    let status = build_status();
+    let list_output = if find_nvm_exe().is_some() {
+        run_nvm(&["list"]).ok()
+    } else {
+        None
+    };
+
+    let status = build_status_with_list(list_output.as_deref());
 
     let installed_map: std::collections::HashMap<String, bool> = if status.installed {
-        parse_installed_versions(&run_nvm(&["list"]).unwrap_or_default())
+        list_output
+            .as_deref()
+            .map(parse_installed_versions)
+            .unwrap_or_default()
             .into_iter()
             .map(|(version, active)| (version, active))
             .collect()
@@ -399,13 +406,16 @@ pub fn nvm_status() -> NvmStatus {
 }
 
 #[tauri::command]
-pub async fn ensure_nvm() -> Result<NvmStatus, String> {
+pub async fn ensure_nvm() -> Result<NodeVersionsResponse, String> {
     if find_nvm_exe().is_none() {
         tauri::async_runtime::spawn_blocking(install_nvm_windows)
             .await
             .map_err(|error| format!("Erro interno: {error}"))??;
     }
-    Ok(build_status())
+
+    tauri::async_runtime::spawn_blocking(build_versions_response)
+        .await
+        .map_err(|error| format!("Erro interno: {error}"))?
 }
 
 #[tauri::command]
