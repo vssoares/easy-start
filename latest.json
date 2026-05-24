@@ -1,0 +1,15 @@
+{
+  "version": "1.1.1",
+  "notes": "Instalador Windows e atualização automática para esta versão.\n\nBaixe o instalador `.exe` nos assets abaixo.\nO arquivo `latest.json` é usado pelo app para detectar atualizações.",
+  "pub_date": "2026-05-24T19:17:45.768Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTRCs0TkhUbUpFTkh2Zks1bXZQQjN2eHNrQklOWXdOYXRaYnNJUy9MOG4zNzNjOTlUQnUrMGp3bUxxVGYwbjkvVHc4b1g2dTd4RnE5bzh0ak1EaUt4Y3lRdEVGR3FsUVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjUwMjYyCWZpbGU6RWFzeSBTdGFydF8xLjEuMV94NjQtc2V0dXAuZXhlClRqckwrVUtoVW5acHFEb05uWUp3eDFZUjFzQm9ISVJHVmFMbk9EcU82MTJXWVM5WkpBbE1GaGgvK2MzbGdER0dPZkY2dzZxY2EyaytmcmpJcUpjZEFnPT0K",
+      "url": "https://github.com/vssoares/easy-start/releases/download/easy-start-v1.1.1/Easy.Start_1.1.1_x64-setup.exe"
+    },
+    "windows-x86_64-nsis": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTRCs0TkhUbUpFTkh2Zks1bXZQQjN2eHNrQklOWXdOYXRaYnNJUy9MOG4zNzNjOTlUQnUrMGp3bUxxVGYwbjkvVHc4b1g2dTd4RnE5bzh0ak1EaUt4Y3lRdEVGR3FsUVFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5NjUwMjYyCWZpbGU6RWFzeSBTdGFydF8xLjEuMV94NjQtc2V0dXAuZXhlClRqckwrVUtoVW5acHFEb05uWUp3eDFZUjFzQm9ISVJHVmFMbk9EcU82MTJXWVM5WkpBbE1GaGgvK2MzbGdER0dPZkY2dzZxY2EyaytmcmpJcUpjZEFnPT0K",
+      "url": "https://github.com/vssoares/easy-start/releases/download/easy-start-v1.1.1/Easy.Start_1.1.1_x64-setup.exe"
+    }
+  }
+}
