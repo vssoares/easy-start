@@ -3,6 +3,9 @@ import { isTauri } from '@tauri-apps/api/core';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'installing' | 'error';
 
+const UPDATE_ENDPOINT =
+  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json';
+
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
   readonly status = signal<UpdateStatus>('idle');
@@ -50,7 +53,7 @@ export class UpdateService {
     } catch (err) {
       this.availableVersion.set(null);
       this.status.set('error');
-      this.errorMessage.set(err instanceof Error ? err.message : 'Falha ao verificar atualizações');
+      this.errorMessage.set(this.describeCheckError(err));
     }
   }
 
@@ -100,5 +103,29 @@ export class UpdateService {
       this.status.set('error');
       this.errorMessage.set(err instanceof Error ? err.message : 'Falha ao instalar atualização');
     }
+  }
+
+  private describeCheckError(err: unknown): string {
+    const message = err instanceof Error ? err.message : String(err);
+    const lower = message.toLowerCase();
+
+    if (
+      lower.includes('status code') ||
+      lower.includes('404') ||
+      lower.includes('not found') ||
+      lower.includes('successful status')
+    ) {
+      return (
+        'Não foi possível buscar atualizações (manifesto indisponível). ' +
+        'Confira se o release no GitHub está publicado (não em rascunho) e contém latest.json. ' +
+        UPDATE_ENDPOINT
+      );
+    }
+
+    if (lower.includes('signature') || lower.includes('assinatura')) {
+      return 'Falha na verificação de assinatura. O build de release precisa usar a mesma chave TAURI_SIGNING_PRIVATE_KEY.';
+    }
+
+    return message || 'Falha ao verificar atualizações';
   }
 }

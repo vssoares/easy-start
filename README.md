@@ -67,11 +67,26 @@ git push -u origin release/1.0.1
 
 Depois o workflow **Release** roda no push (branch `release` ou `release/*`) **ou** dispare manualmente em **Actions → Release → Run workflow**.
 
-O release é criado como **rascunho**; revise no GitHub e publique quando estiver pronto.
+O release é criado **publicado** automaticamente (rascunho impede o updater de funcionar).
 
 ### Atualização no app
 
 Com o app instalado, ao abrir a interface verifica o GitHub. Se houver versão mais nova, aparece o botão **Atualizar** na barra superior.
+
+### O updater não aparece?
+
+1. **Release em rascunho** — `/releases/latest/download/latest.json` só funciona em releases **publicados**.
+2. **Falta `latest.json`** — o CI precisa do secret `TAURI_SIGNING_PRIVATE_KEY` e `createUpdaterArtifacts: true`.
+3. **Versão igual** — o app só oferece update se a versão no GitHub for **maior** que a instalada (ex.: instalado `1.0.6`, release `1.0.7`).
+4. **App em dev** (`tauri dev`) — use o instalador `.exe` de produção para testar updates.
+
+Verifique o manifesto:
+
+```powershell
+.\scripts\verify-update-manifest.ps1
+```
+
+Deve retornar HTTP 200 e a versão nova.
 
 ## Estrutura
 

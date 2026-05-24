@@ -22,6 +22,18 @@ import { UpdateService } from '../../services/update.service';
           <span>Atualizar para v{{ updates.availableVersion() }}</span>
         }
       </button>
+    } @else if (updates.status() === 'checking') {
+      <span class="text-xs text-zinc-500" data-tauri-drag-region="false">Verificando atualizações…</span>
+    } @else if (updates.status() === 'error') {
+      <button
+        type="button"
+        class="max-w-md truncate rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 transition hover:bg-amber-500/15"
+        [title]="updates.errorMessage() ?? ''"
+        (click)="recheck()"
+        data-tauri-drag-region="false"
+      >
+        Falha ao verificar — tentar de novo
+      </button>
     }
   `,
 })
@@ -30,5 +42,9 @@ export class AppUpdateComponent {
 
   install(): void {
     void this.updates.installUpdate();
+  }
+
+  recheck(): void {
+    void this.updates.checkForUpdate();
   }
 }
