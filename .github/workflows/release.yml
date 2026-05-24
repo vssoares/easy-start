@@ -58,6 +58,16 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Verificar chave de assinatura
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'Secret TAURI_SIGNING_PRIVATE_KEY não configurado. Sem ela não há .sig nem latest.json.'
+          }
+          Write-Host 'Chave de assinatura presente.'
+
       - uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
@@ -83,12 +93,33 @@ jobs:
       - name: Localizar latest.json do build
         id: manifest
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $manifest = Get-ChildItem -Path src-tauri/target -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
+          # tauri-action grava latest.json na raiz do repo (não em src-tauri/target)
+          $manifest = Get-Item -Path latest.json -ErrorAction SilentlyContinue
           if (-not $manifest) {
-            throw 'latest.json não encontrado após o build. Verifique TAURI_SIGNING_PRIVATE_KEY e createUpdaterArtifacts.'
+            $manifest = Get-ChildItem -Path src-tauri/target -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 1
+          }
+          if (-not $manifest) {
+            Write-Host 'latest.json não local no disco; baixando do release...'
+            $tag = "easy-start-v${{ steps.tauri.outputs.appVersion }}"
+            $api = "https://api.github.com/repos/${{ github.repository }}/releases/tags/$tag"
+            $release = Invoke-RestMethod -Uri $api -Headers @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/vnd.github+json'
+            }
+            $asset = $release.assets | Where-Object { $_.name -eq 'latest.json' }
+            if (-not $asset) {
+              throw "latest.json ausente. Verifique TAURI_SIGNING_PRIVATE_KEY, createUpdaterArtifacts e logs do tauri-action (Signature not found)."
+            }
+            Invoke-WebRequest -Uri $asset.browser_download_url -Headers @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept = 'application/octet-stream'
+            } -OutFile latest.json
+            $manifest = Get-Item latest.json
           }
           Write-Host "Manifesto: $($manifest.FullName)"
           "path=$($manifest.FullName)" >> $env:GITHUB_OUTPUT

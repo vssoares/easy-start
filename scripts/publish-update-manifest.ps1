@@ -13,12 +13,15 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   Write-Error 'Git não encontrado.'
 }
 
-$manifest = Get-ChildItem -Path src-tauri/target -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
-  Sort-Object LastWriteTime -Descending |
-  Select-Object -First 1
+$manifest = Get-Item -Path (Join-Path $repoRoot 'latest.json') -ErrorAction SilentlyContinue
+if (-not $manifest) {
+  $manifest = Get-ChildItem -Path (Join-Path $repoRoot 'src-tauri/target') -Recurse -Filter latest.json -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+}
 
 if (-not $manifest) {
-  Write-Error 'latest.json não encontrado. Rode: npm run tauri:build (com TAURI_SIGNING_PRIVATE_KEY)'
+  Write-Error 'latest.json não encontrado. Rode: npm run tauri:build (com TAURI_SIGNING_PRIVATE_KEY). O arquivo fica na raiz do projeto após o build via CI.'
 }
 
 if (-not $Version) {
