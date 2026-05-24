@@ -14,6 +14,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Read-TextFile([string] $Path) {
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+    return [System.Text.Encoding]::UTF8.GetString($bytes, 3, $bytes.Length - 3)
+  }
+  return [System.Text.Encoding]::UTF8.GetString($bytes)
+}
+
+function Write-TextFile([string] $Path, [string] $Content) {
+  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
 $Version = $Version.Trim().TrimStart('v')
 if ($Version -notmatch '^\d+\.\d+\.\d+([\-.][0-9A-Za-z\-.]+)?(\+[0-9A-Za-z\-.]+)?$') {
   Write-Error "Versão inválida: '$Version'. Use semver, ex.: 1.0.1"
@@ -71,12 +84,12 @@ foreach ($relPath in $files.Keys) {
     Write-Warning "Arquivo não encontrado, ignorando: $relPath"
     continue
   }
-  $content = Get-Content -Raw -Path $path
+  $content = Read-TextFile $path
   $updated = & $files[$relPath] $content $Version
   if ($content -eq $updated) {
     Write-Warning "Nenhuma alteração em $relPath (campo version não encontrado?)"
   }
-  Set-Content -Path $path -Value $updated -Encoding utf8
+  Write-TextFile $path $updated
 }
 
 git add -A
