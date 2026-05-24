@@ -8,6 +8,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'library', label: 'Biblioteca', icon: 'library', route: '/biblioteca' },
   { id: 'store', label: 'Loja', icon: 'store', route: '/loja' },
   { id: 'stats', label: 'Estatísticas', icon: 'stats', route: '/estatisticas' },
+  { id: 'node', label: 'Node', icon: 'node', route: '/node' },
   { id: 'tools', label: 'Ferramentas', icon: 'tools', route: '/ferramentas' },
 ];
 

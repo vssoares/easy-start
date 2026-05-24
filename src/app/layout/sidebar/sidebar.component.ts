@@ -56,6 +56,12 @@ import { UpdateService } from '../../services/update.service';
                   <path d="M4 20V10M10 20V4M16 20v-8M22 20V14" stroke-linecap="round" />
                 </svg>
               }
+              @case ('node') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" stroke-linejoin="round" />
+                  <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke-linejoin="round" />
+                </svg>
+              }
               @default {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
