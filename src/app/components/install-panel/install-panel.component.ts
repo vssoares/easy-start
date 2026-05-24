@@ -45,11 +45,6 @@ import { InstallService } from '../../services/install.service';
         <div class="flex items-center justify-between gap-4">
           <div class="text-sm text-zinc-400">
             <span class="font-medium text-white">{{ install.selectedCount() }}</span> selecionado(s)
-            @if (install.unsupportedSelected().length > 0) {
-              <span class="ml-2 text-amber-500/90">
-                · {{ install.unsupportedSelected().length }} sem winget (serão ignorados)
-              </span>
-            }
           </div>
 
           <div class="flex items-center gap-2">

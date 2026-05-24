@@ -33,6 +33,6 @@ export const CATEGORIES: CategoryItem[] = [
 export const PROGRAMS: Program[] = NINITE_APPS.map((program) => ({
   ...program,
   wingetId: WINGET_MAP[program.niniteSlug],
-}));
+})).filter((program) => !!program.wingetId);
 
 export const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');

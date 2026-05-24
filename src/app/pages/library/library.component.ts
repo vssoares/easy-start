@@ -1,34 +1,32 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AlphabetIndexComponent } from '../../components/alphabet-index/alphabet-index.component';
-import { CategoryNavComponent } from '../../components/category-nav/category-nav.component';
 import { InstallPanelComponent } from '../../components/install-panel/install-panel.component';
-import { ProgramTileComponent } from '../../components/program-tile/program-tile.component';
-import { ALPHABET, CATEGORIES, PROGRAMS } from '../../data/programs.data';
-import { ProgramCategory } from '../../models/program.model';
+import { ProgramCheckItemComponent } from '../../components/program-check-item/program-check-item.component';
+import { CATEGORIES, PROGRAMS } from '../../data/programs.data';
+import { Program, ProgramCategory } from '../../models/program.model';
 import { InstallService } from '../../services/install.service';
+
+interface CategoryGroup {
+  id: ProgramCategory;
+  label: string;
+  programs: Program[];
+}
 
 @Component({
   selector: 'page-library',
-  imports: [
-    FormsModule,
-    CategoryNavComponent,
-    ProgramTileComponent,
-    AlphabetIndexComponent,
-    InstallPanelComponent,
-  ],
+  imports: [FormsModule, ProgramCheckItemComponent, InstallPanelComponent],
   template: `
     <section class="flex h-full flex-col overflow-hidden px-8 pb-28 pt-6">
-      <header class="mb-4 flex shrink-0 items-start justify-between">
-        <div class="flex-1">
+      <header class="mb-4 flex shrink-0 items-start justify-between gap-4">
+        <section>
           <h1 class="text-2xl font-bold text-white">Instalar programas</h1>
           <p class="mt-0.5 text-sm text-zinc-500">
-            {{ programsCount }} apps do Ninite — clique para selecionar e instale em lote
+            {{ programsCount }} apps disponíveis — selecione e instale em lote via winget
           </p>
-        </div>
+        </section>
         <button
           type="button"
-          class="rounded-lg border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-white/25 hover:text-white disabled:opacity-40"
+          class="shrink-0 rounded-lg border border-white/15 px-4 py-2 text-sm text-zinc-300 transition hover:border-white/25 hover:text-white disabled:opacity-40"
           [disabled]="install.installing()"
           (click)="selectVisible()"
         >
@@ -57,36 +55,36 @@ import { InstallService } from '../../services/install.service';
         />
       </label>
 
-      <div class="flex min-h-0 flex-1 gap-4">
-        <ui-category-nav
-          [categories]="categories"
-          [activeCategory]="activeCategory()"
-          (categoryChange)="activeCategory.set($event)"
-        />
-
-        <div class="min-h-0 flex-1 overflow-y-auto pr-2 scrollbar-thin">
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-x-3 gap-y-5">
-            @for (program of filteredPrograms(); track program.id) {
-              <ui-program-tile
-                [program]="program"
-                [selected]="install.isSelected(program.id)"
-                [installable]="!!program.wingetId"
-                (toggle)="install.toggleSelection(program.id)"
-              />
-            } @empty {
-              <p class="col-span-full py-12 text-center text-sm text-zinc-500">
-                Nenhum app encontrado.
-              </p>
+      <section class="min-h-0 flex-1 overflow-y-auto pr-2 scrollbar-thin">
+        @if (categoryGroups().length === 0) {
+          <p class="py-12 text-center text-sm text-zinc-500">Nenhum app encontrado.</p>
+        } @else {
+          <section
+            class="columns-2 gap-x-8 md:columns-3 lg:columns-4 xl:columns-5 2xl:columns-7"
+          >
+            @for (group of categoryGroups(); track group.id) {
+              <article class="mb-7 break-inside-avoid">
+                <h2
+                  class="mb-2 border-b border-white/10 pb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400"
+                >
+                  {{ group.label }}
+                </h2>
+                <ul class="space-y-0.5">
+                  @for (program of group.programs; track program.id) {
+                    <li>
+                      <ui-program-check-item
+                        [program]="program"
+                        [selected]="install.isSelected(program.id)"
+                        (toggle)="install.toggleSelection(program.id)"
+                      />
+                    </li>
+                  }
+                </ul>
+              </article>
             }
-          </div>
-        </div>
-
-        <ui-alphabet-index
-          [letters]="alphabet"
-          [activeLetter]="activeLetter()"
-          (letterSelect)="onLetterSelect($event)"
-        />
-      </div>
+          </section>
+        }
+      </section>
     </section>
 
     <ui-install-panel />
@@ -94,37 +92,44 @@ import { InstallService } from '../../services/install.service';
 })
 export class LibraryComponent {
   readonly install = inject(InstallService);
-  readonly categories = CATEGORIES;
-  readonly alphabet = ALPHABET;
   readonly programsCount = PROGRAMS.length;
 
-  readonly activeCategory = signal<ProgramCategory>('todos');
-  readonly activeLetter = signal<string | null>(null);
   librarySearch = '';
 
   readonly filteredPrograms = computed(() => {
-    const category = this.activeCategory();
     const query = this.librarySearch.trim().toLowerCase();
-    const letter = this.activeLetter();
+    if (!query) {
+      return PROGRAMS;
+    }
 
-    return PROGRAMS.filter((program) => {
-      const matchesCategory = category === 'todos' || program.category === category;
-      const matchesSearch =
-        !query ||
+    return PROGRAMS.filter(
+      (program) =>
         program.name.toLowerCase().includes(query) ||
-        program.niniteSlug.toLowerCase().includes(query);
-      const matchesLetter =
-        !letter || program.name.toUpperCase().startsWith(letter.toUpperCase());
+        program.niniteSlug.toLowerCase().includes(query),
+    );
+  });
 
-      return matchesCategory && matchesSearch && matchesLetter;
-    });
+  readonly categoryGroups = computed((): CategoryGroup[] => {
+    const byCategory = new Map<ProgramCategory, Program[]>();
+
+    for (const program of this.filteredPrograms()) {
+      const list = byCategory.get(program.category) ?? [];
+      list.push(program);
+      byCategory.set(program.category, list);
+    }
+
+    return CATEGORIES.filter((category) => category.id !== 'todos')
+      .map((category) => ({
+        id: category.id,
+        label: category.label,
+        programs: (byCategory.get(category.id) ?? []).sort((a, b) =>
+          a.name.localeCompare(b.name, 'pt-BR'),
+        ),
+      }))
+      .filter((group) => group.programs.length > 0);
   });
 
   selectVisible(): void {
     this.install.selectAll(this.filteredPrograms());
-  }
-
-  onLetterSelect(letter: string): void {
-    this.activeLetter.update((current) => (current === letter ? null : letter));
   }
 }
