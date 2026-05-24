@@ -17,6 +17,10 @@ permissions:
 # Actions em Node 24 (Node 20 deprecado nos runners — jun/2026)
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Registry sparse + compilação release mais rápida (só CI)
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 32
 
 jobs:
   publish:
@@ -31,6 +35,15 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Cache Angular build
+        uses: actions/cache@v4
+        with:
+          path: .angular/cache
+          key: angular-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('tsconfig*.json', 'angular.json', 'src/**/*.ts') }}
+          restore-keys: |
+            angular-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            angular-${{ runner.os }}-
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -38,6 +51,9 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          shared-key: release-windows
+          cache-on-failure: true
+          cache-workspace-crates: true
 
       - name: Install frontend dependencies
         run: npm ci
@@ -54,13 +70,15 @@ jobs:
           releaseBody: |
             Instalador Windows e atualização automática para esta versão.
 
-            Baixe o instalador `.exe` ou `.msi` nos assets abaixo.
+            Baixe o instalador `.exe` nos assets abaixo.
             O arquivo `latest.json` é usado pelo app para detectar atualizações.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
-          retryAttempts: 3
+          retryAttempts: 1
+          # CI: só NSIS (WiX/MSI dobra o tempo de bundle no Windows)
+          args: --config src-tauri/tauri.ci.conf.json --ci
 
       - name: Localizar latest.json do build
         id: manifest
@@ -109,10 +127,10 @@ jobs:
       - name: Verificar GitHub Pages
         shell: pwsh
         run: |
-          Start-Sleep -Seconds 15
+          Start-Sleep -Seconds 5
           $pagesUrl = "https://${{ github.repository_owner }}.github.io/easy-start/latest.json"
           Write-Host "Testando: $pagesUrl"
-          $max = 6
+          $max = 3
           for ($i = 1; $i -le $max; $i++) {
             try {
               $r = Invoke-WebRequest -Uri $pagesUrl -UseBasicParsing
@@ -122,7 +140,7 @@ jobs:
               }
             } catch {
               Write-Host "Tentativa $i/$max falhou, aguardando..."
-              Start-Sleep -Seconds 10
+              Start-Sleep -Seconds 5
             }
           }
           Write-Warning "Pages ainda não respondeu. Ative GitHub Pages (branch gh-pages) em Settings → Pages."
