@@ -28,8 +28,14 @@ function Write-TextFile([string] $Path, [string] $Content) {
 }
 
 $Version = $Version.Trim().TrimStart('v')
-if ($Version -notmatch '^\d+\.\d+\.\d+([\-.][0-9A-Za-z\-.]+)?(\+[0-9A-Za-z\-.]+)?$') {
-  Write-Error "Versão inválida: '$Version'. Use semver, ex.: 1.0.1"
+if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)([\-.][0-9A-Za-z\-.]+)?(\+[0-9A-Za-z\-.]+)?$') {
+  Write-Error "Versão inválida: '$Version'. Use semver, ex.: 1.0.2"
+}
+$major, $minor, $patch = $Matches[1], $Matches[2], $Matches[3]
+foreach ($part in @($major, $minor, $patch)) {
+  if ($part.Length -gt 1 -and $part.StartsWith('0')) {
+    Write-Error "Versão inválida: '$Version'. Sem zeros à esquerda (use 1.0.2, não 1.0.02)."
+  }
 }
 
 if (-not $BranchName) {
