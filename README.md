@@ -43,14 +43,28 @@ O workflow `.github/workflows/release.yml` publica instaladores e o manifest `la
 
 ### Configuração (uma vez)
 
-1. No repositório GitHub: **Settings → Actions → General → Workflow permissions** → marque **Read and write permissions**.
-2. Crie o secret `TAURI_SIGNING_PRIVATE_KEY` com o conteúdo do arquivo `%USERPROFILE%\.tauri\easy-start.key` (gerado por `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-start.key" --ci`).
-3. Se a chave tiver senha, crie também `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
+
+```powershell
+.\scripts\setup-github-release.ps1
+```
+
+O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` não usa senha; nesse caso `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` não é necessário.
 
 ### Publicar uma versão
 
-1. Atualize a versão em `src-tauri/tauri.conf.json` (e `package.json` / `src-tauri/Cargo.toml` se quiser manter sincronizado).
-2. Faça push para a branch `release` **ou** dispare manualmente em **Actions → Release → Run workflow**.
+```powershell
+.\scripts\prepare-release.ps1 1.0.1
+# ou: npm run release:prepare -- 1.0.1
+```
+
+O script cria a branch `release/1.0.1`, atualiza `src-tauri/tauri.conf.json`, `package.json`, `package-lock.json` e `src-tauri/Cargo.toml`, e faz o commit. O **push** fica com você:
+
+```powershell
+git push -u origin release/1.0.1
+```
+
+Depois o workflow **Release** roda no push (branch `release` ou `release/*`) **ou** dispare manualmente em **Actions → Release → Run workflow**.
 
 O release é criado como **rascunho**; revise no GitHub e publique quando estiver pronto.
 
