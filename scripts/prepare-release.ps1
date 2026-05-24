@@ -96,6 +96,7 @@ foreach ($relPath in $files.Keys) {
 
 git add -A
 git commit -m "chore(release): v$Version"
+git push origin $sourceBranch
 
 Write-Host "Criando branch '$BranchName' a partir de '$sourceBranch' ..."
 git checkout -b $BranchName
