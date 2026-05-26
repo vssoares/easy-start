@@ -234,8 +234,8 @@ function Assert-Command([string] $name, [string] $installHint) {
 }
 
 function Set-TauriSigningEnv([string] $privateKeyPath) {
-  # O bundler/updater exige TAURI_SIGNING_PRIVATE_KEY (conteúdo do arquivo).
-  # Chaves --ci usam senha vazia: PASSWORD="" + --ci no build evitam o prompt "Password:".
+  # Só TAURI_SIGNING_PRIVATE_KEY (conteúdo). Não use _PATH junto — o CLI pode ignorar a chave.
+  # Chaves --ci: PASSWORD="" + --ci no build evitam o prompt "Password:".
   foreach ($name in @(
       'TAURI_SIGNING_PRIVATE_KEY',
       'TAURI_SIGNING_PRIVATE_KEY_PATH',
@@ -258,10 +258,24 @@ function Set-TauriSigningEnv([string] $privateKeyPath) {
 
   $resolved = (Resolve-Path $privateKeyPath).Path
   $env:TAURI_SIGNING_PRIVATE_KEY = $content
-  $env:TAURI_SIGNING_PRIVATE_KEY_PATH = $resolved
   $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
 
   Write-Host "  Chave de assinatura: $resolved" -ForegroundColor DarkGray
+}
+
+function Invoke-TauriReleaseBuild([string] $repoRoot) {
+  if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+    throw 'TAURI_SIGNING_PRIVATE_KEY não definida. Chame Set-TauriSigningEnv antes do build.'
+  }
+
+  Push-Location $repoRoot
+  try {
+    # npx no mesmo processo PowerShell — mais confiável que npm run para repassar env no Windows.
+    & npx --no-install tauri build --config src-tauri/tauri.ci.conf.json --ci
+    return $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
 }
 
 function Find-NsisBundleDir([string] $repoRoot) {
@@ -458,8 +472,8 @@ Gere com: npm run tauri signer generate -- -w `"$KeyPath`" --ci
 
   Set-TauriSigningEnv $KeyPath
 
-  npm run tauri:build -- --config src-tauri/tauri.ci.conf.json --ci
-  if ($LASTEXITCODE -ne 0) {
+  $buildExit = Invoke-TauriReleaseBuild $repoRoot
+  if ($buildExit -ne 0) {
     throw 'Build Tauri falhou.'
   }
   Write-Host '  Build concluído.' -ForegroundColor Green

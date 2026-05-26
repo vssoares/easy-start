@@ -10,6 +10,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "tauri:build:release": "powershell -ExecutionPolicy Bypass -File scripts/tauri-build-signed.ps1",
     "release:prepare": "powershell -ExecutionPolicy Bypass -File scripts/prepare-release.ps1",
     "release:local": "powershell -ExecutionPolicy Bypass -File scripts/release-local.ps1"
   },
