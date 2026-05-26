@@ -4,12 +4,13 @@ import { WINGET_MAP } from './winget-map.data';
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Início', icon: 'home', route: '/inicio' },
-  { id: 'network', label: 'Rede', icon: 'network', route: '/rede' },
+  // { id: 'network', label: 'Rede', icon: 'network', route: '/rede' },
   { id: 'library', label: 'Biblioteca', icon: 'library', route: '/biblioteca' },
-  { id: 'store', label: 'Loja', icon: 'store', route: '/loja' },
-  { id: 'stats', label: 'Estatísticas', icon: 'stats', route: '/estatisticas' },
+  // { id: 'store', label: 'Loja', icon: 'store', route: '/loja' },
+  // { id: 'stats', label: 'Estatísticas', icon: 'stats', route: '/estatisticas' },
+  { id: 'quick', label: 'Acesso rápido', icon: 'quick', route: '/acesso-rapido' },
   { id: 'node', label: 'Node', icon: 'node', route: '/node' },
-  { id: 'tools', label: 'Ferramentas', icon: 'tools', route: '/ferramentas' },
+  // { id: 'tools', label: 'Ferramentas', icon: 'tools', route: '/ferramentas' },
 ];
 
 export const CATEGORIES: CategoryItem[] = [

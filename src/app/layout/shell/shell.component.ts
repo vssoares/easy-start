@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NAV_ITEMS } from '../../data/programs.data';
 import { UpdateService } from '../../services/update.service';
@@ -10,7 +10,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
   imports: [RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
     <div class="flex h-full w-full overflow-hidden bg-[#0f0f12] text-white">
-      <app-sidebar [items]="navItems" />
+      <app-sidebar [items]="navItems()" />
 
       <div class="flex min-w-0 flex-1 flex-col">
         <app-topbar />
@@ -29,7 +29,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
 })
 export class ShellComponent implements OnInit {
   private readonly updates = inject(UpdateService);
-  readonly navItems = NAV_ITEMS;
+  readonly navItems = signal(NAV_ITEMS);
 
   ngOnInit(): void {
     void this.updates.init();

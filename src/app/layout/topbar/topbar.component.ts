@@ -8,10 +8,12 @@ import { WindowControlsComponent } from '../../components/window-controls/window
   imports: [FormsModule, AppUpdateComponent, WindowControlsComponent],
   template: `
     <header
-      class="flex h-12 shrink-0 items-center border-b border-white/5 bg-[#0f0f12] px-4"
+      class="flex h-12 shrink-0 items-center border-b border-white/5 bg-[#0f0f12] pl-4 pr-4"
       data-tauri-drag-region
     >
-      <div class="w-14 shrink-0"></div>
+      <div class="flex shrink-0 items-center" data-tauri-drag-region="false">
+        <ui-window-controls />
+      </div>
 
       <div class="flex flex-1 items-center justify-center gap-3" data-tauri-drag-region>
         <ui-app-update />
@@ -37,8 +39,6 @@ import { WindowControlsComponent } from '../../components/window-controls/window
           />
         </label> -->
       </div>
-
-      <ui-window-controls />
     </header>
   `,
 })
