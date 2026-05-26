@@ -29,10 +29,14 @@ Set-Location $repoRoot
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   throw 'GitHub CLI não encontrado. Rode: gh auth login'
 }
-gh auth status 2>$null | Out-Null
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+$null = gh auth status 2>&1
 if ($LASTEXITCODE -ne 0) {
+  $ErrorActionPreference = $prevEap
   throw 'gh não autenticado. Rode: gh auth login'
 }
+$ErrorActionPreference = $prevEap
 
 Write-Host ''
 Write-Host "=== Publicar v$Version ($tag) ===" -ForegroundColor Cyan
@@ -47,9 +51,7 @@ $artifacts = Get-UploadArtifacts $nsisDir
 Write-Host "  $($artifacts.Count) arquivo(s)" -ForegroundColor DarkGray
 
 Write-Host '[3/3] GitHub Release ...' -ForegroundColor Cyan
-$exists = $false
-gh release view $tag --repo $Repo 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) { $exists = $true }
+$exists = Test-GhRelease -Tag $tag -Repo $Repo
 
 if ($exists -and $Force) {
   gh release delete $tag --repo $Repo --yes --cleanup-tag

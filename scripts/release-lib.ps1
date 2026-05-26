@@ -119,6 +119,17 @@ function Get-UploadArtifacts([string] $nsisDir) {
   return $list
 }
 
+function Test-GhRelease {
+  param([string] $Tag, [string] $Repo)
+
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = 'SilentlyContinue'
+  $null = gh release view $Tag --repo $Repo 2>&1
+  $ok = ($LASTEXITCODE -eq 0)
+  $ErrorActionPreference = $prevEap
+  return $ok
+}
+
 function Invoke-ReleaseGit {
   param([string] $Version, [string] $ReleaseBranch, [switch] $DoPush)
 
