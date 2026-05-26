@@ -89,9 +89,9 @@ Chave ausente: `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-s
 Se o build pedir `Password:` manualmente, use o script `release-local` (já configura as variáveis) ou no PowerShell:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY_PATH = "$env:USERPROFILE\.tauri\easy-start.key"
+$key = "$env:USERPROFILE\.tauri\easy-start.key"
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw $key
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
-Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
 npm run tauri:build -- --config src-tauri/tauri.ci.conf.json --ci
 ```
 

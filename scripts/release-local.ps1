@@ -234,9 +234,12 @@ function Assert-Command([string] $name, [string] $installHint) {
 }
 
 function Set-TauriSigningEnv([string] $privateKeyPath) {
-  # Chaves --ci são "criptografadas com senha vazia": sem PASSWORD="" e --ci no build, o Tauri pede senha no prompt.
+  # O bundler/updater exige TAURI_SIGNING_PRIVATE_KEY (conteúdo do arquivo).
+  # Chaves --ci usam senha vazia: PASSWORD="" + --ci no build evitam o prompt "Password:".
   foreach ($name in @(
       'TAURI_SIGNING_PRIVATE_KEY',
+      'TAURI_SIGNING_PRIVATE_KEY_PATH',
+      'TAURI_SIGNING_PRIVATE_KEY_PASSWORD',
       'TAURI_PRIVATE_KEY',
       'TAURI_PRIVATE_KEY_PATH',
       'TAURI_PRIVATE_KEY_PASSWORD'
@@ -244,9 +247,21 @@ function Set-TauriSigningEnv([string] $privateKeyPath) {
     Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
   }
 
+  if (-not (Test-Path $privateKeyPath)) {
+    throw "Chave não encontrada: $privateKeyPath"
+  }
+
+  $content = (Get-Content -Raw -Path $privateKeyPath).TrimEnd()
+  if ([string]::IsNullOrWhiteSpace($content)) {
+    throw "Arquivo de chave vazio: $privateKeyPath"
+  }
+
   $resolved = (Resolve-Path $privateKeyPath).Path
+  $env:TAURI_SIGNING_PRIVATE_KEY = $content
   $env:TAURI_SIGNING_PRIVATE_KEY_PATH = $resolved
   $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
+
+  Write-Host "  Chave de assinatura: $resolved" -ForegroundColor DarkGray
 }
 
 function Find-NsisBundleDir([string] $repoRoot) {
