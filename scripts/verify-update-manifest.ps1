@@ -11,8 +11,16 @@ try {
   Write-Host "  OK ($($response.StatusCode))" -ForegroundColor Green
   $json = $response.Content | ConvertFrom-Json
   Write-Host "  Versão: $($json.version)"
-  if ($json.platforms.'windows-x86_64') {
-    Write-Host "  windows-x86_64: $($json.platforms.'windows-x86_64'.url)"
+  $platform = $json.platforms.'windows-x86_64'
+  if ($platform) {
+    Write-Host "  windows-x86_64: $($platform.url)"
+    try {
+      $exe = Invoke-WebRequest -Uri $platform.url -UseBasicParsing -Method Head
+      Write-Host "  instalador: OK ($($exe.StatusCode))" -ForegroundColor Green
+    } catch {
+      Write-Host "  instalador: FALHA (404?) — URL do .exe no manifesto não bate com o asset no GitHub." -ForegroundColor Red
+      exit 1
+    }
   }
 } catch {
   Write-Host ''

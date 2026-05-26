@@ -32,7 +32,7 @@ import { UpdateService } from '../../services/update.service';
         (click)="recheck()"
         data-tauri-drag-region="false"
       >
-        Falha ao verificar — tentar de novo
+        {{ updates.errorMessage() ?? 'Falha na atualização' }} — tentar de novo
       </button>
     }
   `,

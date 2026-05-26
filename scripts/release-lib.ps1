@@ -83,11 +83,22 @@ function Assert-SignedBuild([string] $repoRoot, [string] $version) {
 }
 
 function Write-LatestJson {
-  param([string] $NsisDir, [string] $Version, [string] $Tag, [string] $Repo, [string] $Notes)
+  param(
+    [string] $NsisDir,
+    [string] $Version,
+    [string] $Tag,
+    [string] $Repo,
+    [string] $Notes,
+    [string] $DownloadUrl = ''
+  )
 
   $exe = Get-NsisSetupExe $NsisDir
   $signature = (Get-Content -Raw "$($exe.FullName).sig").Trim()
-  $url = "https://github.com/$Repo/releases/download/$Tag/$([Uri]::EscapeDataString($exe.Name))"
+  if (-not $DownloadUrl) {
+    # GitHub troca espaços por pontos no nome do asset; URL com %20 quebra o download.
+    $assetName = $exe.Name -replace ' ', '.'
+    $DownloadUrl = "https://github.com/$Repo/releases/download/$Tag/$([Uri]::EscapeDataString($assetName))"
+  }
 
   $manifest = [ordered]@{
     version   = $Version
@@ -96,7 +107,7 @@ function Write-LatestJson {
     platforms = [ordered]@{
       'windows-x86_64' = [ordered]@{
         signature = $signature
-        url       = $url
+        url       = $DownloadUrl
       }
     }
   }
@@ -104,6 +115,22 @@ function Write-LatestJson {
   $path = Join-Path $NsisDir 'latest.json'
   Write-TextFile $path ($manifest | ConvertTo-Json -Depth 6)
   return $path
+}
+
+function Sync-LatestJsonFromGhRelease {
+  param([string] $NsisDir, [string] $Version, [string] $Tag, [string] $Repo, [string] $Notes)
+
+  $release = gh release view $Tag --repo $Repo --json assets | ConvertFrom-Json
+  $exeAsset = $release.assets |
+    Where-Object { $_.name -like '*setup.exe' -and $_.name -notlike '*.sig' } |
+    Select-Object -First 1
+
+  if (-not $exeAsset) {
+    throw "Asset do instalador não encontrado no release $Tag. Faça upload do .exe antes."
+  }
+
+  return Write-LatestJson -NsisDir $NsisDir -Version $Version -Tag $Tag -Repo $Repo -Notes $Notes `
+    -DownloadUrl $exeAsset.url
 }
 
 function Get-UploadArtifacts([string] $nsisDir) {

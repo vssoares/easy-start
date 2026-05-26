@@ -42,15 +42,15 @@ Write-Host ''
 Write-Host "=== Publicar v$Version ($tag) ===" -ForegroundColor Cyan
 Write-Host ''
 
-Write-Host '[1/3] Verificando build assinado ...' -ForegroundColor Cyan
+Write-Host '[1/4] Verificando build assinado ...' -ForegroundColor Cyan
 $nsisDir = Assert-SignedBuild $repoRoot $Version
 
-Write-Host '[2/3] Gerando latest.json ...' -ForegroundColor Cyan
+Write-Host '[2/4] Gerando latest.json ...' -ForegroundColor Cyan
 Write-LatestJson -NsisDir $nsisDir -Version $Version -Tag $tag -Repo $Repo -Notes $Notes | Out-Null
 $artifacts = Get-UploadArtifacts $nsisDir
 Write-Host "  $($artifacts.Count) arquivo(s)" -ForegroundColor DarkGray
 
-Write-Host '[3/3] GitHub Release ...' -ForegroundColor Cyan
+Write-Host '[3/4] GitHub Release ...' -ForegroundColor Cyan
 $exists = Test-GhRelease -Tag $tag -Repo $Repo
 
 if ($exists -and $Force) {
@@ -76,6 +76,11 @@ Manifesto: $manifestUrl
 
 gh release upload $tag $artifacts --repo $Repo --clobber
 if ($LASTEXITCODE -ne 0) { throw 'Falha no upload.' }
+
+Write-Host '[4/4] Sincronizando latest.json com URL real do asset ...' -ForegroundColor Cyan
+$latestPath = Sync-LatestJsonFromGhRelease -NsisDir $nsisDir -Version $Version -Tag $tag -Repo $Repo -Notes $Notes
+gh release upload $tag $latestPath --repo $Repo --clobber
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao reenviar latest.json.' }
 
 Write-Host ''
 Write-Host '=== Publicado ===' -ForegroundColor Green

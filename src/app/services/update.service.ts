@@ -103,7 +103,7 @@ export class UpdateService {
       await relaunch();
     } catch (err) {
       this.status.set('error');
-      this.errorMessage.set(err instanceof Error ? err.message : 'Falha ao instalar atualização');
+      this.errorMessage.set(this.describeInstallError(err));
     }
   }
 
@@ -142,5 +142,28 @@ export class UpdateService {
     }
 
     return message || 'Falha ao verificar atualizações';
+  }
+
+  private describeInstallError(err: unknown): string {
+    const message = err instanceof Error ? err.message : String(err);
+    const lower = message.toLowerCase();
+
+    if (
+      lower.includes('status code') ||
+      lower.includes('404') ||
+      lower.includes('not found') ||
+      lower.includes('successful status')
+    ) {
+      return (
+        'Não foi possível baixar o instalador (404). O latest.json pode apontar para um nome de arquivo errado. ' +
+        'Republice com npm run release:publish.'
+      );
+    }
+
+    if (lower.includes('signature') || lower.includes('assinatura')) {
+      return 'Assinatura inválida. Reinstale o app com a mesma chave usada no release ou alinhe a pubkey em tauri.conf.json.';
+    }
+
+    return message || 'Falha ao instalar atualização';
   }
 }
