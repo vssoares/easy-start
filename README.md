@@ -39,7 +39,9 @@ O instalador fica em `src-tauri/target/release/bundle/`.
 
 ## Releases no GitHub
 
-O workflow `.github/workflows/release.yml` publica instaladores e o manifest `latest.json` no **GitHub Release** (`/releases/latest/download/latest.json`) para atualização automática no app.
+Publicação **local** (scripts `release:version`, `tauri:build:release`, `release:publish`). O workflow **GitHub Actions** em `.github/workflows/release.yml` está **comentado/desativado**.
+
+O manifest `latest.json` fica em `/releases/latest/download/latest.json` para atualização automática no app.
 
 ### Configuração (uma vez)
 
@@ -49,9 +51,9 @@ Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
 .\scripts\setup-github-release.ps1
 ```
 
-O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` usa **senha vazia**; o `tauri-build-signed.ps1` define `TAURI_SIGNING_PRIVATE_KEY` e passa `--ci` no build.
+O script configura o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key` (útil se reativar o Actions). A chave gerada com `--ci` usa **senha vazia**; o `tauri-build-signed.ps1` define `TAURI_SIGNING_PRIVATE_KEY` e passa `--ci` no build.
 
-### Publicar na sua máquina (recomendado)
+### Publicar na sua máquina
 
 ```powershell
 # 1) Versão nos arquivos + commit + branch release/<versão> + volta para main
@@ -74,23 +76,7 @@ Flags: `release:version -- -Push` · `release:publish -- -Force`
 
 Build assinado: `npm run tauri:build:release` (chave em `%USERPROFILE%\.tauri\easy-start.key`).
 
-### Publicar via GitHub Actions
-
-```powershell
-.\scripts\prepare-release.ps1 1.0.1
-# ou: npm run release:prepare -- 1.0.1
-```
-
-O script atualiza as versões, **commita na branch atual** (ex.: `main`) e em seguida cria a branch `release/1.0.1` apontando para o mesmo commit. O **push** fica com você:
-
-```powershell
-git push origin main
-git push -u origin release/1.0.1
-```
-
-Depois o workflow **Release** roda no push (branch `release` ou `release/*`) **ou** dispare manualmente em **Actions → Release → Run workflow**.
-
-O release é criado **publicado** automaticamente (rascunho impede o updater de funcionar).
+Para reativar o CI no futuro, descomente `.github/workflows/release.yml`.
 
 ### Atualização no app
 
@@ -99,7 +85,7 @@ Com o app instalado, ao abrir a interface verifica o GitHub. Se houver versão m
 ### O updater não aparece?
 
 1. **Release em rascunho** — `https://github.com/vssoares/easy-start/releases/latest/download/latest.json` só funciona em releases **publicados**.
-2. **Falta `latest.json`** — o CI precisa do secret `TAURI_SIGNING_PRIVATE_KEY` e `createUpdaterArtifacts: true`.
+2. **Falta `latest.json`** — publique com `npm run release:publish` (precisa de `.exe`, `.sig` e manifesto).
 3. **Versão igual** — o app só oferece update se a versão no GitHub for **maior** que a instalada (ex.: instalado `1.0.6`, release `1.0.7`).
 4. **App em dev** (`tauri dev`) — use o instalador `.exe` de produção para testar updates.
 5. **Build antigo** — apps já instalados usam o endpoint gravado no instalador; publique uma versão nova com este endpoint para que usuários antigos recebam o update.
