@@ -233,6 +233,22 @@ function Assert-Command([string] $name, [string] $installHint) {
   }
 }
 
+function Set-TauriSigningEnv([string] $privateKeyPath) {
+  # Chaves --ci são "criptografadas com senha vazia": sem PASSWORD="" e --ci no build, o Tauri pede senha no prompt.
+  foreach ($name in @(
+      'TAURI_SIGNING_PRIVATE_KEY',
+      'TAURI_PRIVATE_KEY',
+      'TAURI_PRIVATE_KEY_PATH',
+      'TAURI_PRIVATE_KEY_PASSWORD'
+    )) {
+    Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
+  }
+
+  $resolved = (Resolve-Path $privateKeyPath).Path
+  $env:TAURI_SIGNING_PRIVATE_KEY_PATH = $resolved
+  $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
+}
+
 function Find-NsisBundleDir([string] $repoRoot) {
   $base = Join-Path $repoRoot 'src-tauri/target/release/bundle/nsis'
   if (-not (Test-Path $base)) {
@@ -351,12 +367,9 @@ Gere com: npm run tauri signer generate -- -w `"$KeyPath`" --ci
 "@
   }
 
-  $env:TAURI_SIGNING_PRIVATE_KEY = Get-Content -Raw -Path $KeyPath
-  if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
-    throw "Arquivo de chave vazio: $KeyPath"
-  }
+  Set-TauriSigningEnv $KeyPath
 
-  npm run tauri:build -- --config src-tauri/tauri.ci.conf.json
+  npm run tauri:build -- --config src-tauri/tauri.ci.conf.json --ci
   if ($LASTEXITCODE -ne 0) {
     throw 'Build Tauri falhou.'
   }

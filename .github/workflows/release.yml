@@ -70,7 +70,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Chave gerada com --ci usa senha vazia; sem isso o build pede password no runner.
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         with:
           tagName: easy-start-v__VERSION__
           releaseName: Easy Start v__VERSION__

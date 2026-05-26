@@ -49,7 +49,7 @@ Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
 .\scripts\setup-github-release.ps1
 ```
 
-O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` não usa senha; nesse caso `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` não é necessário.
+O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` usa **senha vazia** (o arquivo ainda aparece como "encrypted"); o `release-local.ps1` define `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` e passa `--ci` no build para não pedir senha no terminal.
 
 ### Publicar na sua máquina (recomendado)
 
@@ -84,7 +84,16 @@ Opções úteis:
 | `-Force` | Recria o release se a tag já existir |
 | `-Push` | Envia o commit para `origin` (cuidado: push em `release/*` dispara o CI também) |
 
-Chave ausente: `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-start.key" --ci`
+Chave ausente: `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-start.key" --ci --force`
+
+Se o build pedir `Password:` manualmente, use o script `release-local` (já configura as variáveis) ou no PowerShell:
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY_PATH = "$env:USERPROFILE\.tauri\easy-start.key"
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
+Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY -ErrorAction SilentlyContinue
+npm run tauri:build -- --config src-tauri/tauri.ci.conf.json --ci
+```
 
 ### Publicar via GitHub Actions
 
