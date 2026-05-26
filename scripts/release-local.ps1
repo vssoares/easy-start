@@ -272,6 +272,80 @@ function Find-NsisBundleDir([string] $repoRoot) {
   return (Resolve-Path $base).Path
 }
 
+function Write-UpdaterLatestJson {
+  param(
+    [string] $NsisDir,
+    [string] $Version,
+    [string] $Tag,
+    [string] $Repo,
+    [string] $Notes = ''
+  )
+
+  $setupExe = Get-ChildItem -Path $NsisDir -File -Filter '*setup.exe' |
+    Where-Object { $_.Extension -eq '.exe' } |
+    Select-Object -First 1
+
+  if (-not $setupExe) {
+    $setupExe = Get-ChildItem -Path $NsisDir -File -Filter '*.exe' |
+      Where-Object { $_.Name -notlike '*.sig' } |
+      Select-Object -First 1
+  }
+
+  if (-not $setupExe) {
+    throw "Instalador NSIS (.exe) não encontrado em $NsisDir"
+  }
+
+  $sigPath = "$($setupExe.FullName).sig"
+  if (-not (Test-Path $sigPath)) {
+    throw "Assinatura não encontrada: $sigPath (build sem TAURI_SIGNING_PRIVATE_KEY?)"
+  }
+
+  $signature = (Get-Content -Raw -Path $sigPath).Trim()
+  $assetName = $setupExe.Name
+  $encodedName = [Uri]::EscapeDataString($assetName)
+  $downloadUrl = "https://github.com/$Repo/releases/download/$Tag/$encodedName"
+
+  if (-not $Notes) {
+    $Notes = "Easy Start v$Version"
+  }
+
+  $manifest = [ordered]@{
+    version   = $Version
+    notes     = $Notes
+    pub_date  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    platforms = [ordered]@{
+      'windows-x86_64' = [ordered]@{
+        signature = $signature
+        url       = $downloadUrl
+      }
+    }
+  }
+
+  $jsonPath = Join-Path $NsisDir 'latest.json'
+  $json = $manifest | ConvertTo-Json -Depth 6
+  Write-TextFile $jsonPath $json
+
+  Write-Host "  latest.json gerado ($assetName)" -ForegroundColor DarkGray
+  return $jsonPath
+}
+
+function Ensure-UpdaterLatestJson {
+  param(
+    [string] $NsisDir,
+    [string] $Version,
+    [string] $Tag,
+    [string] $Repo,
+    [string] $Notes = ''
+  )
+
+  $existing = Join-Path $NsisDir 'latest.json'
+  if (Test-Path $existing) {
+    return $existing
+  }
+
+  return Write-UpdaterLatestJson -NsisDir $NsisDir -Version $Version -Tag $Tag -Repo $Repo -Notes $Notes
+}
+
 function Get-ReleaseArtifacts([string] $nsisDir) {
   $files = Get-ChildItem -Path $nsisDir -File -ErrorAction SilentlyContinue
   if (-not $files) {
@@ -294,7 +368,7 @@ function Get-ReleaseArtifacts([string] $nsisDir) {
   }
 
   if (-not ($artifacts | Where-Object { $_ -like '*latest.json' })) {
-    throw "latest.json ausente em $nsisDir. Defina TAURI_SIGNING_PRIVATE_KEY antes do build."
+    throw "latest.json ausente em $nsisDir. Rode o build com assinatura (.exe.sig) para gerar o manifesto."
   }
   if (-not ($artifacts | Where-Object { $_ -like '*.exe' })) {
     throw "Instalador .exe ausente em $nsisDir"
@@ -394,6 +468,11 @@ Gere com: npm run tauri signer generate -- -w `"$KeyPath`" --ci
 }
 
 $nsisDir = Find-NsisBundleDir $repoRoot
+
+Write-Host '  Gerando latest.json (mesmo formato do tauri-action no CI) ...' -ForegroundColor Cyan
+$releaseNotes = if ($Notes) { $Notes } else { "Easy Start v$Version" }
+Ensure-UpdaterLatestJson -NsisDir $nsisDir -Version $Version -Tag $tag -Repo $Repo -Notes $releaseNotes | Out-Null
+
 $artifactPaths = Get-ReleaseArtifacts $nsisDir
 Write-Host "  Artefatos: $($artifactPaths.Count) arquivo(s) em $nsisDir" -ForegroundColor DarkGray
 

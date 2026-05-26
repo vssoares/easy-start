@@ -70,7 +70,7 @@ npm run release:local -- -Bump minor
 npm run release:local -- -Confirm
 ```
 
-O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), cria o release `easy-start-v*` e envia `.exe`, `.sig` e `latest.json`.
+O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), gera `latest.json` a partir do `.exe` + `.sig` (o `tauri build` só não cria esse JSON — no CI isso é feito pelo `tauri-action`), cria o release `easy-start-v*` e envia os assets.
 
 Opções úteis:
 
