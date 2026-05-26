@@ -1,6 +1,6 @@
 {
   "name": "easy-start",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,7 +12,8 @@
     "tauri:build": "tauri build",
     "tauri:build:release": "powershell -ExecutionPolicy Bypass -File scripts/tauri-build-signed.ps1",
     "release:prepare": "powershell -ExecutionPolicy Bypass -File scripts/prepare-release.ps1",
-    "release:local": "powershell -ExecutionPolicy Bypass -File scripts/release-local.ps1"
+    "release:version": "powershell -ExecutionPolicy Bypass -File scripts/release-version.ps1",
+    "release:publish": "powershell -ExecutionPolicy Bypass -File scripts/release-publish.ps1"
   },
   "private": true,
   "packageManager": "npm@10.9.8",

@@ -49,51 +49,30 @@ Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
 .\scripts\setup-github-release.ps1
 ```
 
-O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` usa **senha vazia** (o arquivo ainda aparece como "encrypted"); o `release-local.ps1` define `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` e passa `--ci` no build para não pedir senha no terminal.
+O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` usa **senha vazia**; o `tauri-build-signed.ps1` define `TAURI_SIGNING_PRIVATE_KEY` e passa `--ci` no build.
 
 ### Publicar na sua máquina (recomendado)
 
-**Ordem:** build assinado primeiro; depois **um** `release:local` (git + GitHub).
-
 ```powershell
-# 0) Opcional: definir próxima versão nos arquivos (antes do build)
-npm run release:local -- -VersionOnly
-# ou: npm run release:local -- 1.2.0 -VersionOnly
+# 1) Versão nos arquivos + commit + branch release/<versão> + volta para main
+npm run release:version -- 1.1.6
 
-# 1) Build assinado
+# 2) Build assinado
 npm run tauri:build:release
 
-# 2) Commit, branch release/*, volta para main, publica no GitHub
-npm run release:local
+# 3) Upload no GitHub (.exe, .sig, latest.json)
+npm run release:publish -- 1.1.6
 ```
 
-O passo 2 usa a **versão do instalador** em `nsis/` (não incrementa de novo se o build já existe).
+| Comando | O que faz |
+|---------|-----------|
+| `release:version` | Atualiza `package.json`, `tauri.conf.json`, etc.; commit; `release/1.1.6`; volta para `main` |
+| `tauri:build:release` | Build NSIS assinado (`.exe` + `.sig`) |
+| `release:publish` | Cria/atualiza release `easy-start-v1.1.6` no GitHub |
 
-| Flag | Efeito |
-|------|--------|
-| `-VersionOnly` | Só atualiza versão nos arquivos (rode **antes** do build) |
-| `-SkipVersionBump` | Não altera arquivos; confia no instalador buildado |
-| `-SkipGit` | Só publica no GitHub (sem commit/branch) |
-| `-Push` | `git push` de main e `release/*` |
-| `-Force` | Recria o release se a tag já existir |
-| `-Bump minor` | Com `-VersionOnly`, tipo de incremento |
-| `-DryRun` | Mostra qual versão seria usada |
+Flags: `release:version -- -Push` · `release:publish -- -Force`
 
-**Build assinado** (chave em `%USERPROFILE%\.tauri\easy-start.key`):
-
-```powershell
-npm run tauri:build:release
-```
-
-Não use só `npm run tauri:build` — não aplica a chave de assinatura.
-
-Chave ausente:
-
-```powershell
-npm run tauri signer generate -- -w "$env:USERPROFILE\.tauri\easy-start.key" --ci --force
-```
-
-Depois atualize `plugins.updater.pubkey` em `src-tauri/tauri.conf.json` com o conteúdo de `easy-start.key.pub`.
+Build assinado: `npm run tauri:build:release` (chave em `%USERPROFILE%\.tauri\easy-start.key`).
 
 ### Publicar via GitHub Actions
 
