@@ -10,7 +10,7 @@ import { Component, input, output } from '@angular/core';
           class="text-[9px] leading-none transition"
           [class]="
             activeLetter() === letter
-              ? 'font-semibold text-[#e8192c]'
+              ? 'font-semibold text-app-accent'
               : 'text-zinc-600 hover:text-zinc-400'
           "
           (click)="letterSelect.emit(letter)"

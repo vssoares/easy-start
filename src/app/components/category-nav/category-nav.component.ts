@@ -11,7 +11,7 @@ import { CategoryItem, ProgramCategory } from '../../models/program.model';
           class="rounded-md px-3 py-1.5 text-left text-xs transition"
           [class]="
             activeCategory() === category.id
-              ? 'font-medium text-[#e8192c]'
+              ? 'font-medium text-app-accent'
               : 'text-zinc-400 hover:text-zinc-200'
           "
           (click)="categoryChange.emit(category.id)"

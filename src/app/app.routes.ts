@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { ShellComponent } from './layout/shell/shell.component';
 import { LibraryComponent } from './pages/library/library.component';
+import { MonitorsPageComponent } from './pages/monitors/monitors-page.component';
 import { NodePageComponent } from './pages/node/node-page.component';
 import { PlaceholderPageComponent } from './pages/placeholder/placeholder-page.component';
 import { QuickAccessPageComponent } from './pages/quick-access/quick-access-page.component';
@@ -16,6 +17,7 @@ export const routes: Routes = [
       { path: 'biblioteca', component: LibraryComponent },
       { path: 'node', component: NodePageComponent },
       { path: 'acesso-rapido', component: QuickAccessPageComponent },
+      { path: 'monitores', component: MonitorsPageComponent },
       { path: 'loja', component: PlaceholderPageComponent, data: { title: 'Loja' } },
       {
         path: 'estatisticas',

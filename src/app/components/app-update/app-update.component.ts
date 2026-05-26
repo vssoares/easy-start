@@ -7,7 +7,7 @@ import { UpdateService } from '../../services/update.service';
     @if (updates.hasUpdate()) {
       <button
         type="button"
-        class="flex items-center gap-2 rounded-full border border-[#e8192c]/40 bg-[#e8192c]/10 px-3 py-1.5 text-sm font-medium text-[#ff4d5e] transition hover:bg-[#e8192c]/20 disabled:cursor-not-allowed disabled:opacity-60"
+        class="flex items-center gap-2 rounded-full border border-app-accent/40 bg-app-accent/10 px-3 py-1.5 text-sm font-medium text-app-accent-bright transition hover:bg-app-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
         [disabled]="updates.status() === 'installing'"
         (click)="install()"
         data-tauri-drag-region="false"

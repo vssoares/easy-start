@@ -42,7 +42,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
 
       <div class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-thin">
         <!-- Porta -->
-        <article class="rounded-xl border border-white/5 bg-[#16161a] p-5">
+        <article class="rounded-xl border border-white/5 bg-app-surface p-5">
           <h2 class="text-base font-semibold text-white">Porta em uso</h2>
           <p class="mt-1 text-sm text-zinc-500">
             Verifique ou encerre processos em portas como 4200, 3000 ou 8080.
@@ -56,7 +56,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
                 min="1"
                 max="65535"
                 [(ngModel)]="portInput"
-                class="w-32 rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-[#e8192c]/40"
+                class="w-32 rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-app-accent/40"
                 [disabled]="quick.loading()"
               />
             </label>
@@ -70,7 +70,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
             </button>
             <button
               type="button"
-              class="rounded-lg bg-[#e8192c] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#c91424] disabled:opacity-50"
+              class="rounded-lg bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-app-accent-hover-soft disabled:opacity-50"
               [disabled]="quick.loading()"
               (click)="onKillPort()"
             >
@@ -91,14 +91,14 @@ const SYSTEM_TOOLS: SystemTool[] = [
         </article>
 
         <!-- Pastas -->
-        <article class="rounded-xl border border-white/5 bg-[#16161a] p-5">
+        <article class="rounded-xl border border-white/5 bg-app-surface p-5">
           <h2 class="text-base font-semibold text-white">Abrir pastas</h2>
           <p class="mt-1 text-sm text-zinc-500">Atalhos para pastas usadas no dia a dia.</p>
           <div class="mt-4 flex flex-wrap gap-2">
             @for (folder of folders; track folder.id) {
               <button
                 type="button"
-                class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+                class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
                 [disabled]="quick.loading()"
                 (click)="openFolder(folder.id)"
               >
@@ -109,13 +109,13 @@ const SYSTEM_TOOLS: SystemTool[] = [
         </article>
 
         <!-- Rede -->
-        <article class="rounded-xl border border-white/5 bg-[#16161a] p-5">
+        <article class="rounded-xl border border-white/5 bg-app-surface p-5">
           <h2 class="text-base font-semibold text-white">Rede</h2>
           <p class="mt-1 text-sm text-zinc-500">DNS e endereços IPv4 locais.</p>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
               [disabled]="quick.loading()"
               (click)="flushDns()"
             >
@@ -123,7 +123,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
             </button>
             <button
               type="button"
-              class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
               [disabled]="quick.loading()"
               (click)="loadIps()"
             >
@@ -131,7 +131,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
             </button>
             <button
               type="button"
-              class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
               [disabled]="quick.loading() || !quick.localIps()?.length"
               (click)="copyIps()"
             >
@@ -157,13 +157,13 @@ const SYSTEM_TOOLS: SystemTool[] = [
         </article>
 
         <!-- Sistema -->
-        <article class="rounded-xl border border-white/5 bg-[#16161a] p-5">
+        <article class="rounded-xl border border-white/5 bg-app-surface p-5">
           <h2 class="text-base font-semibold text-white">Sistema</h2>
           <p class="mt-1 text-sm text-zinc-500">Ferramentas e manutenção rápida.</p>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
               [disabled]="quick.loading()"
               (click)="restartExplorer()"
             >
@@ -172,7 +172,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
             @for (tool of systemTools; track tool.id) {
               <button
                 type="button"
-                class="rounded-lg border border-white/10 bg-[#121218] px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+                class="rounded-lg border border-white/10 bg-app-panel px-3 py-2 text-sm text-zinc-200 transition hover:border-white/20 hover:text-white disabled:opacity-50"
                 [disabled]="quick.loading()"
                 (click)="openTool(tool.id)"
                 [title]="tool.description"

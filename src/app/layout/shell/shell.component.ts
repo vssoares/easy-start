@@ -9,7 +9,7 @@ import { TopbarComponent } from '../topbar/topbar.component';
   selector: 'app-shell',
   imports: [RouterOutlet, SidebarComponent, TopbarComponent],
   template: `
-    <div class="flex h-full w-full overflow-hidden bg-[#0f0f12] text-white">
+    <div class="flex h-full w-full overflow-hidden bg-app-bg text-white">
       <app-sidebar [items]="navItems()" />
 
       <div class="flex min-w-0 flex-1 flex-col">

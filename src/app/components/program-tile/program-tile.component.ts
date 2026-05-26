@@ -8,7 +8,7 @@ import { Program } from '../../models/program.model';
       type="button"
       class="group relative flex w-full flex-col items-center gap-2 rounded-xl p-1 text-left transition"
       [class.ring-2]="selected()"
-      [class.ring-[#e8192c]]="selected()"
+      [class.ring-app-accent]="selected()"
       [class.opacity-50]="!installable()"
       (click)="toggle.emit()"
       [attr.aria-pressed]="selected()"
@@ -23,7 +23,7 @@ import { Program } from '../../models/program.model';
         </div>
         @if (selected()) {
           <span
-            class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#e8192c] text-white"
+            class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-app-accent text-white"
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M2 5.5L4 7.5L8 3" stroke-linecap="round" stroke-linejoin="round" />

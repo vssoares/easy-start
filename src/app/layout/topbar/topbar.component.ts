@@ -8,7 +8,7 @@ import { WindowControlsComponent } from '../../components/window-controls/window
   imports: [FormsModule, AppUpdateComponent, WindowControlsComponent],
   template: `
     <header
-      class="flex h-12 shrink-0 items-center border-b border-white/5 bg-[#0f0f12] pl-4 pr-4"
+      class="flex h-12 shrink-0 items-center border-b border-white/5 bg-app-bg pl-4 pr-4"
       data-tauri-drag-region
     >
       <div class="flex shrink-0 items-center" data-tauri-drag-region="false">
@@ -34,7 +34,7 @@ import { WindowControlsComponent } from '../../components/window-controls/window
             type="search"
             [(ngModel)]="globalSearch"
             placeholder="Procurar"
-            class="w-full rounded-full border border-white/10 bg-[#1a1a1f] py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-[#e8192c]/50 focus:ring-1 focus:ring-[#e8192c]/30"
+            class="w-full rounded-full border border-white/10 bg-app-elevated py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-app-accent/50 focus:ring-1 focus:ring-app-accent/30"
             data-tauri-drag-region="false"
           />
         </label> -->

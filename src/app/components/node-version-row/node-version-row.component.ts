@@ -7,15 +7,15 @@ import { NodeVersionInfo } from '../../models/node.model';
   template: `
     <article
       class="mb-1 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition"
-      [class.bg-[#e8192c]/10]="item().active"
+      [class.bg-app-accent/10]="item().active"
       [class.border]="item().active"
-      [class.border-[#e8192c]/30]="item().active"
+      [class.border-app-accent/30]="item().active"
     >
       <section class="min-w-0">
         <section class="flex items-center gap-2">
           <span class="font-mono text-sm text-white">v{{ item().version }}</span>
           @if (item().active) {
-            <span class="rounded bg-[#e8192c]/20 px-1.5 py-0.5 text-[10px] font-medium text-[#ff6b7a]">
+            <span class="rounded bg-app-accent/20 px-1.5 py-0.5 text-[10px] font-medium text-app-accent-muted">
               Ativa
             </span>
           }
@@ -31,7 +31,7 @@ import { NodeVersionInfo } from '../../models/node.model';
         @if (mode() === 'available' && !item().installed) {
           <button
             type="button"
-            class="rounded-md bg-[#e8192c] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-[#c91425] disabled:opacity-40"
+            class="rounded-md bg-app-accent px-2.5 py-1 text-xs font-medium text-white transition hover:bg-app-accent-hover disabled:opacity-40"
             [disabled]="disabled() || busy()"
             (click)="install.emit(item().version)"
           >

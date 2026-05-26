@@ -7,7 +7,7 @@ import { UpdateService } from '../../services/update.service';
   selector: 'app-sidebar',
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <aside class="flex h-full w-14 flex-col items-center overflow-visible border-r border-white/5 bg-[#0a0a0c] py-3">
+    <aside class="flex h-full w-14 flex-col items-center overflow-visible border-r border-white/5 bg-app-sidebar py-3">
       <div class="mb-6 flex h-8 w-8 items-center justify-center">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6l-8-4z" fill="#e8192c" />
@@ -67,6 +67,12 @@ import { UpdateService } from '../../services/update.service';
                   <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke-linejoin="round" />
                 </svg>
               }
+              @case ('monitors') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="4" width="18" height="12" rx="2" />
+                  <path d="M8 20h8M12 16v4" stroke-linecap="round" />
+                </svg>
+              }
               @default {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
@@ -90,7 +96,7 @@ import { UpdateService } from '../../services/update.service';
             />
           </svg>
           @if (updates.hasUpdate()) {
-            <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#e8192c]"></span>
+            <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-app-accent"></span>
           }
         </button>
         <button

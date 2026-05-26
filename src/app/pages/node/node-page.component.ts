@@ -14,7 +14,7 @@ const SKELETON_PANELS = [1, 2];
     @if (mode() === 'full') {
       <section class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
         @for (card of skeletonCards; track card) {
-          <article class="rounded-xl border border-white/5 bg-[#16161a] px-4 py-3">
+          <article class="rounded-xl border border-white/5 bg-app-surface px-4 py-3">
             <span class="skeleton-shimmer block h-3 w-20 rounded"></span>
             <span
               class="skeleton-shimmer mt-3 block h-7 rounded"
@@ -27,7 +27,7 @@ const SKELETON_PANELS = [1, 2];
       <section class="grid min-h-0 flex-1 gap-6 lg:grid-cols-2">
         @for (panel of skeletonPanels; track panel) {
           <article
-            class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/5 bg-[#121218]"
+            class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/5 bg-app-panel"
           >
             <header class="border-b border-white/5 px-4 py-3">
               <span
@@ -117,7 +117,7 @@ export class NodeSkeletonComponent {
             </section>
             <button
               type="button"
-              class="shrink-0 rounded-lg bg-[#e8192c] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#c91425] disabled:opacity-40"
+              class="shrink-0 rounded-lg bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-app-accent-hover disabled:opacity-40"
               [disabled]="node.loading()"
               (click)="node.ensureNvm()"
             >
@@ -126,17 +126,17 @@ export class NodeSkeletonComponent {
           </section>
         } @else {
           <section class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <article class="rounded-xl border border-white/10 bg-[#16161a] px-4 py-3">
+            <article class="rounded-xl border border-white/10 bg-app-surface px-4 py-3">
               <p class="text-xs uppercase tracking-wide text-zinc-500">Versão ativa</p>
               <p class="mt-1 text-xl font-semibold text-white">
                 {{ status()?.currentVersion ?? 'Nenhuma' }}
               </p>
             </article>
-            <article class="rounded-xl border border-white/10 bg-[#16161a] px-4 py-3">
+            <article class="rounded-xl border border-white/10 bg-app-surface px-4 py-3">
               <p class="text-xs uppercase tracking-wide text-zinc-500">NVM</p>
               <p class="mt-1 text-sm text-zinc-200">{{ status()?.nvmVersion }}</p>
             </article>
-            <article class="rounded-xl border border-white/10 bg-[#16161a] px-4 py-3">
+            <article class="rounded-xl border border-white/10 bg-app-surface px-4 py-3">
               <p class="text-xs uppercase tracking-wide text-zinc-500">Instaladas</p>
               <p class="mt-1 text-xl font-semibold text-white">{{ installedCount() }}</p>
             </article>
@@ -144,7 +144,7 @@ export class NodeSkeletonComponent {
         }
 
         <section class="grid min-h-0 flex-1 gap-6 lg:grid-cols-2">
-          <article class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121218]">
+          <article class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-app-panel">
             <header class="border-b border-white/10 px-4 py-3">
               <h2 class="text-sm font-semibold text-white">Versões instaladas</h2>
             </header>
@@ -170,14 +170,14 @@ export class NodeSkeletonComponent {
                 @if (refreshing()) {
                   <ui-node-skeleton
                     mode="rows"
-                    class="pointer-events-none absolute inset-0 z-10 bg-[#121218]/70 p-2"
+                    class="pointer-events-none absolute inset-0 z-10 bg-app-panel/70 p-2"
                   />
                 }
               }
             </section>
           </article>
 
-          <article class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121218]">
+          <article class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-app-panel">
             <header class="border-b border-white/10 px-4 py-3">
               <section class="flex items-center justify-between gap-3">
                 <h2 class="text-sm font-semibold text-white">Versões LTS disponíveis</h2>
@@ -187,7 +187,7 @@ export class NodeSkeletonComponent {
                 type="search"
                 [(ngModel)]="versionSearch"
                 placeholder="Buscar LTS (ex: 14, 18, 22)..."
-                class="mt-3 w-full rounded-lg border border-white/10 bg-[#16161a] px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-[#e8192c]/40"
+                class="mt-3 w-full rounded-lg border border-white/10 bg-app-surface px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-app-accent/40"
                 [disabled]="node.loading()"
               />
             </header>
@@ -213,7 +213,7 @@ export class NodeSkeletonComponent {
                 @if (refreshing()) {
                   <ui-node-skeleton
                     mode="rows"
-                    class="pointer-events-none absolute inset-0 z-10 bg-[#121218]/70 p-2"
+                    class="pointer-events-none absolute inset-0 z-10 bg-app-panel/70 p-2"
                   />
                 }
               }

@@ -51,7 +51,7 @@ interface CategoryGroup {
           type="search"
           [(ngModel)]="librarySearch"
           placeholder="Procurar apps..."
-          class="w-full rounded-lg border border-white/10 bg-[#16161a] py-3 pl-11 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-[#e8192c]/40"
+          class="w-full rounded-lg border border-white/10 bg-app-surface py-3 pl-11 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-app-accent/40"
         />
       </label>
 

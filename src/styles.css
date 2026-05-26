@@ -5,7 +5,17 @@
   --color-app-bg: #0f0f12;
   --color-app-sidebar: #0a0a0c;
   --color-app-surface: #16161a;
+  --color-app-panel: #121218;
+  --color-app-elevated: #1a1a1f;
+  --color-app-recessed: #101014;
+  --color-app-screen: #1c1c22;
   --color-app-accent: #e8192c;
+  --color-app-accent-hover: #c91425;
+  --color-app-accent-hover-soft: #c91424;
+  --color-app-accent-dark: #8b0000;
+  --color-app-accent-bright: #ff4d5e;
+  --color-app-accent-soft: #ff6674;
+  --color-app-accent-muted: #ff6b7a;
 }
 
 * {

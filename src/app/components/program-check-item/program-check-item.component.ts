@@ -8,15 +8,15 @@ import { Program } from '../../models/program.model';
     <button
       type="button"
       class="group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition hover:bg-white/5"
-      [class.bg-[#e8192c]/10]="selected()"
+      [class.bg-app-accent/10]="selected()"
       [attr.aria-pressed]="selected()"
       [attr.aria-label]="program().name"
       (click)="toggle.emit()"
     >
       <span
         class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition"
-        [class.border-[#e8192c]]="selected()"
-        [class.bg-[#e8192c]]="selected()"
+        [class.border-app-accent]="selected()"
+        [class.bg-app-accent]="selected()"
         [class.border-white/20]="!selected()"
         [class.group-hover:border-white/35]="!selected()"
       >

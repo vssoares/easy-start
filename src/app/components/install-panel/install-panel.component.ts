@@ -6,7 +6,7 @@ import { InstallService } from '../../services/install.service';
   template: `
     @if (install.selectedCount() > 0 || install.installing() || install.lastResults()) {
       <aside
-        class="fixed bottom-0 left-14 right-0 z-50 border-t border-white/10 bg-[#121218]/95 px-8 py-4 backdrop-blur-md"
+        class="fixed bottom-0 left-14 right-0 z-50 border-t border-white/10 bg-app-panel/95 px-8 py-4 backdrop-blur-md"
       >
         @if (install.error()) {
           <p class="mb-3 text-sm text-red-400">{{ install.error() }}</p>
@@ -24,7 +24,7 @@ import { InstallService } from '../../services/install.service';
             </div>
             <div class="h-1.5 overflow-hidden rounded-full bg-white/10">
               <div
-                class="h-full bg-[#e8192c] transition-all duration-300"
+                class="h-full bg-app-accent transition-all duration-300"
                 [style.width.%]="(install.progress()!.index / install.progress()!.total) * 100"
               ></div>
             </div>
@@ -58,7 +58,7 @@ import { InstallService } from '../../services/install.service';
             </button>
             <button
               type="button"
-              class="rounded-lg bg-[#e8192c] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#c91425] disabled:cursor-not-allowed disabled:opacity-40"
+              class="rounded-lg bg-app-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-app-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
               [disabled]="install.installableSelected().length === 0 || install.installing()"
               (click)="install.installSelected()"
             >
