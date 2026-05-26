@@ -56,16 +56,29 @@ O script configura permissões **Read and write** do Actions e o secret `TAURI_S
 Build, assinatura e upload para o GitHub Release — sem depender do Actions:
 
 ```powershell
-.\scripts\release-local.ps1 1.1.4
-# ou: npm run release:local -- 1.1.4
+.\scripts\release-local.ps1
+# ou: npm run release:local
 ```
 
-O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), cria o release `easy-start-v1.1.4` e envia `.exe`, `.sig` e `latest.json`.
+Sem argumento, o script **detecta a próxima versão**: compara `tauri.conf.json` com a última release `easy-start-v*` no GitHub e incrementa o **patch** (ex.: publicada `1.1.3` → publica `1.1.4`). Se os arquivos já estiverem em `1.1.4` e o GitHub ainda em `1.1.3`, usa `1.1.4`.
+
+Versão manual ou outro incremento:
+
+```powershell
+.\scripts\release-local.ps1 1.2.0
+npm run release:local -- -Bump minor
+npm run release:local -- -Confirm
+```
+
+O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), cria o release `easy-start-v*` e envia `.exe`, `.sig` e `latest.json`.
 
 Opções úteis:
 
 | Flag | Efeito |
 |------|--------|
+| `-Bump minor` / `major` | Tipo de incremento na detecção automática |
+| `-DryRun` | Só mostra qual versão seria usada |
+| `-Confirm` | Pede confirmação antes do build |
 | `-SkipVersionBump` | Só build/publica com a versão já nos arquivos |
 | `-SkipBuild` | Só envia artefatos já gerados |
 | `-Force` | Recria o release se a tag já existir |

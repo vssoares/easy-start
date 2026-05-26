@@ -1,21 +1,29 @@
 # Build local (Tauri + assinatura) e publica release no GitHub.
 #
 # Uso:
-#   .\scripts\release-local.ps1 1.1.4
-#   npm run release:local -- 1.1.4
+#   .\scripts\release-local.ps1              # detecta próxima versão (patch)
+#   .\scripts\release-local.ps1 1.1.4        # versão explícita
+#   npm run release:local
+#   npm run release:local -- -Bump minor
 #
 # Opções:
-#   -SkipVersionBump   Usa a versão já em tauri.conf.json (não altera arquivos)
-#   -SkipCommit        Não faz commit git
-#   -SkipBuild         Só publica artefatos já gerados em src-tauri/target/...
-#   -SkipVerify        Não testa a URL do latest.json após publicar
-#   -Force             Apaga e recria o release/tag se já existir
-#   -Push              Faz push da branch atual após o commit (evite em release/* se o CI também publica)
-#   -Notes "texto"     Notas customizadas do release
+#   -Bump patch|minor|major   Incremento quando a versão é detectada (padrão: patch)
+#   -Confirm                  Pede confirmação antes de build/publicar
+#   -DryRun                   Só mostra qual versão seria usada (não builda nem publica)
+#   -SkipVersionBump          Usa a versão já em tauri.conf.json (não altera arquivos)
+#   -SkipCommit               Não faz commit git
+#   -SkipBuild                Só publica artefatos já gerados em src-tauri/target/...
+#   -SkipVerify               Não testa a URL do latest.json após publicar
+#   -Force                    Apaga e recria o release/tag se já existir
+#   -Push                     Faz push da branch atual após o commit
+#   -Notes "texto"            Notas customizadas do release
 
 param(
   [Parameter(Mandatory = $false, Position = 0)]
   [string] $Version = '',
+
+  [ValidateSet('patch', 'minor', 'major')]
+  [string] $Bump = 'patch',
 
   [string] $Repo = 'vssoares/easy-start',
   [string] $KeyPath = '',
@@ -25,6 +33,8 @@ param(
   [switch] $SkipVerify,
   [switch] $Force,
   [switch] $Push,
+  [switch] $Confirm,
+  [switch] $DryRun,
   [string] $Notes = ''
 )
 
@@ -97,6 +107,126 @@ function Get-CurrentProjectVersion([string] $repoRoot) {
   return [string]$conf.version
 }
 
+function Compare-SemVerCore([string] $a, [string] $b) {
+  $va = [version](Assert-SemVer $a)
+  $vb = [version](Assert-SemVer $b)
+  return $va.CompareTo($vb)
+}
+
+function Bump-SemVerCore([string] $v, [string] $kind) {
+  $v = Assert-SemVer $v
+  if ($v -notmatch '^(\d+)\.(\d+)\.(\d+)') {
+    throw "Não é possível incrementar versão com sufixo pré-release: $v"
+  }
+  $maj = [int]$Matches[1]
+  $min = [int]$Matches[2]
+  $pat = [int]$Matches[3]
+  switch ($kind) {
+    'major' { return "$($maj + 1).0.0" }
+    'minor' { return "$maj.$($min + 1).0" }
+    default  { return "$maj.$min.$($pat + 1)" }
+  }
+}
+
+function Get-LatestPublishedVersion([string] $repo) {
+  $raw = gh release list --repo $repo --limit 100 --json tagName 2>$null
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
+    return $null
+  }
+
+  $releases = $raw | ConvertFrom-Json
+  $prefix = 'easy-start-v'
+  $best = $null
+
+  foreach ($entry in $releases) {
+    $tag = [string]$entry.tagName
+    if ($tag -notlike "$prefix*") {
+      continue
+    }
+    try {
+      $ver = Assert-SemVer $tag.Substring($prefix.Length)
+      if (-not $best -or (Compare-SemVerCore $ver $best) -gt 0) {
+        $best = $ver
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return $best
+}
+
+function Resolve-NextReleaseVersion {
+  param(
+    [string] $Repo,
+    [string] $RepoRoot,
+    [string] $ExplicitVersion,
+    [string] $BumpKind,
+    [switch] $SkipVersionBump
+  )
+
+  $project = Get-CurrentProjectVersion $RepoRoot
+  $project = Assert-SemVer $project
+
+  if ($ExplicitVersion) {
+    return @{
+      Version = (Assert-SemVer $ExplicitVersion)
+      Source  = 'informada manualmente'
+    }
+  }
+
+  if ($SkipVersionBump) {
+    return @{
+      Version = $project
+      Source  = 'arquivos do projeto (-SkipVersionBump)'
+    }
+  }
+
+  $published = Get-LatestPublishedVersion $Repo
+
+  Write-Host 'Detectando versão ...' -ForegroundColor Cyan
+  Write-Host "  Projeto (tauri.conf.json): $project"
+  if ($published) {
+    Write-Host "  Última publicada (GitHub):   $published"
+  } else {
+    Write-Host '  Última publicada (GitHub):   (nenhuma release easy-start-v*)'
+  }
+
+  if (-not $published) {
+    if ((Compare-SemVerCore $project '0.0.0') -le 0) {
+      throw 'Versão do projeto inválida ou 0.0.0; informe -Version ou ajuste tauri.conf.json'
+    }
+    return @{
+      Version = $project
+      Source  = 'versão do projeto (primeira release no GitHub)'
+    }
+  }
+
+  $cmpProjectVsPublished = Compare-SemVerCore $project $published
+
+  if ($cmpProjectVsPublished -gt 0) {
+    return @{
+      Version = $project
+      Source  = 'projeto já está à frente da última release publicada'
+    }
+  }
+
+  if ($cmpProjectVsPublished -eq 0) {
+    $next = Bump-SemVerCore $project $BumpKind
+    return @{
+      Version = $next
+      Source  = "incremento -Bump $BumpKind (projeto = última publicada)"
+    }
+  }
+
+  Write-Warning "Versão no projeto ($project) é menor que a última publicada ($published). Usando incremento a partir do GitHub."
+  $next = Bump-SemVerCore $published $BumpKind
+  return @{
+    Version = $next
+    Source  = "incremento -Bump $BumpKind a partir da última publicada"
+  }
+}
+
 function Assert-Command([string] $name, [string] $installHint) {
   if (-not (Get-Command $name -ErrorAction SilentlyContinue)) {
     throw "$name não encontrado no PATH. $installHint"
@@ -160,26 +290,26 @@ if (-not $KeyPath) {
   $KeyPath = Join-Path $env:USERPROFILE '.tauri\easy-start.key'
 }
 
-if ($SkipBuild -and $SkipVersionBump -and -not $Version) {
-  $Version = Get-CurrentProjectVersion $repoRoot
+$resolved = Resolve-NextReleaseVersion -Repo $Repo -RepoRoot $repoRoot -ExplicitVersion $Version -BumpKind $Bump -SkipVersionBump:$SkipVersionBump
+$Version = $resolved.Version
+$versionSource = $resolved.Source
+
+if ($DryRun) {
+  Write-Host ''
+  Write-Host "Dry-run: versão detectada = $Version" -ForegroundColor Green
+  Write-Host "         tag = easy-start-v$Version"
+  Write-Host "         origem: $versionSource"
+  exit 0
 }
 
-if ($SkipVersionBump) {
-  if (-not $Version) {
-    $Version = Get-CurrentProjectVersion $repoRoot
-  } else {
-    $Version = Assert-SemVer $Version
-    $current = Get-CurrentProjectVersion $repoRoot
-    if ($Version -ne $current) {
-      Write-Warning "SkipVersionBump: versão nos arquivos é $current (parâmetro $Version ignorado para bump)."
-      $Version = $current
-    }
+if ($Confirm) {
+  Write-Host ''
+  Write-Host "Será publicada a versão $Version ($versionSource)." -ForegroundColor Yellow
+  $answer = Read-Host 'Continuar? [S/n]'
+  if ($answer -match '^[nN]') {
+    Write-Host 'Cancelado.'
+    exit 0
   }
-} else {
-  if (-not $Version) {
-    throw 'Informe a versão: .\scripts\release-local.ps1 1.1.4'
-  }
-  $Version = Assert-SemVer $Version
 }
 
 $tag = "easy-start-v$Version"
@@ -188,6 +318,7 @@ $manifestUrl = 'https://github.com/vssoares/easy-start/releases/latest/download/
 
 Write-Host ''
 Write-Host "=== Release local: v$Version ($tag) ===" -ForegroundColor Cyan
+Write-Host "    Origem: $versionSource" -ForegroundColor DarkGray
 Write-Host ''
 
 if (-not $SkipVersionBump) {
