@@ -1,22 +1,25 @@
-# Build local (Tauri + assinatura) e publica release no GitHub.
+# Git + publicação no GitHub (artefatos já buildados com npm run tauri:build:release).
 #
-# Uso:
-#   .\scripts\release-local.ps1              # detecta próxima versão (patch)
-#   .\scripts\release-local.ps1 1.1.4        # versão explícita
-#   npm run release:local
-#   npm run release:local -- -Bump minor
+# Ordem:
+#   1. npm run tauri:build:release
+#   2. npm run release:local          # bump (opcional) + commit + branch release/* + volta à main + upload
+#
+# Antes do passo 1, defina a versão nos arquivos (uma opção):
+#   npm run release:local -- -VersionOnly
+#   npm run release:local -- 1.2.0 -VersionOnly
 #
 # Opções:
-#   -Bump patch|minor|major   Incremento quando a versão é detectada (padrão: patch)
-#   -Confirm                  Pede confirmação antes de build/publicar
-#   -DryRun                   Só mostra qual versão seria usada (não builda nem publica)
-#   -SkipVersionBump          Usa a versão já em tauri.conf.json (não altera arquivos)
-#   -SkipCommit               Não faz commit git
-#   -SkipBuild                Só publica artefatos já gerados em src-tauri/target/...
-#   -SkipVerify               Não testa a URL do latest.json após publicar
-#   -Force                    Apaga e recria o release/tag se já existir
-#   -Push                     Faz push da branch atual após o commit
-#   -Notes "texto"            Notas customizadas do release
+#   -VersionOnly              Só atualiza versão nos arquivos (rode antes do build)
+#   -Bump patch|minor|major   Incremento na detecção automática (com -VersionOnly ou sem build ainda)
+#   -Confirm                  Pede confirmação antes de publicar
+#   -DryRun                   Só mostra a versão detectada
+#   -SkipVersionBump          Não altera arquivos; usa versão do instalador buildado
+#   -SkipGit                  Não commita nem cria branch release/*
+#   -SkipVerify               Não testa latest.json após publicar
+#   -Force                    Recria o release/tag se já existir
+#   -Push                     git push da branch principal e de release/*
+#   -BranchName               Nome da branch de release (padrão: release/<versão>)
+#   -Notes "texto"            Notas do release
 
 param(
   [Parameter(Mandatory = $false, Position = 0)]
@@ -26,10 +29,10 @@ param(
   [string] $Bump = 'patch',
 
   [string] $Repo = 'vssoares/easy-start',
-  [string] $KeyPath = '',
+  [string] $BranchName = '',
+  [switch] $VersionOnly,
   [switch] $SkipVersionBump,
-  [switch] $SkipCommit,
-  [switch] $SkipBuild,
+  [switch] $SkipGit,
   [switch] $SkipVerify,
   [switch] $Force,
   [switch] $Push,
@@ -233,51 +236,6 @@ function Assert-Command([string] $name, [string] $installHint) {
   }
 }
 
-function Set-TauriSigningEnv([string] $privateKeyPath) {
-  # Só TAURI_SIGNING_PRIVATE_KEY (conteúdo). Não use _PATH junto — o CLI pode ignorar a chave.
-  # Chaves --ci: PASSWORD="" + --ci no build evitam o prompt "Password:".
-  foreach ($name in @(
-      'TAURI_SIGNING_PRIVATE_KEY',
-      'TAURI_SIGNING_PRIVATE_KEY_PATH',
-      'TAURI_SIGNING_PRIVATE_KEY_PASSWORD',
-      'TAURI_PRIVATE_KEY',
-      'TAURI_PRIVATE_KEY_PATH',
-      'TAURI_PRIVATE_KEY_PASSWORD'
-    )) {
-    Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
-  }
-
-  if (-not (Test-Path $privateKeyPath)) {
-    throw "Chave não encontrada: $privateKeyPath"
-  }
-
-  $content = (Get-Content -Raw -Path $privateKeyPath).TrimEnd()
-  if ([string]::IsNullOrWhiteSpace($content)) {
-    throw "Arquivo de chave vazio: $privateKeyPath"
-  }
-
-  $resolved = (Resolve-Path $privateKeyPath).Path
-  $env:TAURI_SIGNING_PRIVATE_KEY = $content
-  $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
-
-  Write-Host "  Chave de assinatura: $resolved" -ForegroundColor DarkGray
-}
-
-function Invoke-TauriReleaseBuild([string] $repoRoot) {
-  if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
-    throw 'TAURI_SIGNING_PRIVATE_KEY não definida. Chame Set-TauriSigningEnv antes do build.'
-  }
-
-  Push-Location $repoRoot
-  try {
-    # npx no mesmo processo PowerShell — mais confiável que npm run para repassar env no Windows.
-    & npx --no-install tauri build --config src-tauri/tauri.ci.conf.json --ci
-    return $LASTEXITCODE
-  } finally {
-    Pop-Location
-  }
-}
-
 function Find-NsisBundleDir([string] $repoRoot) {
   $base = Join-Path $repoRoot 'src-tauri/target/release/bundle/nsis'
   if (-not (Test-Path $base)) {
@@ -360,6 +318,53 @@ function Ensure-UpdaterLatestJson {
   return Write-UpdaterLatestJson -NsisDir $NsisDir -Version $Version -Tag $Tag -Repo $Repo -Notes $Notes
 }
 
+function Get-NsisSetupExe([string] $nsisDir) {
+  $setupExe = Get-ChildItem -Path $nsisDir -File -Filter '*setup.exe' |
+    Where-Object { $_.Extension -eq '.exe' } |
+    Select-Object -First 1
+  if (-not $setupExe) {
+    $setupExe = Get-ChildItem -Path $nsisDir -File -Filter '*.exe' |
+      Where-Object { $_.Name -notlike '*.sig' } |
+      Select-Object -First 1
+  }
+  return $setupExe
+}
+
+function Get-VersionFromSetupExe([System.IO.FileInfo] $setupExe) {
+  if ($setupExe.Name -match '_(\d+\.\d+\.\d+)(?:[\-.][0-9A-Za-z\-.]+)?(?:\+[0-9A-Za-z\-.]+)?_') {
+    return Assert-SemVer $Matches[1]
+  }
+  throw "Não foi possível ler a versão do nome do instalador: $($setupExe.Name)"
+}
+
+function Assert-SignedBuildArtifacts([string] $nsisDir, [string] $Version) {
+  $setupExe = Get-NsisSetupExe $nsisDir
+  if (-not $setupExe) {
+    throw @"
+Instalador .exe não encontrado em $nsisDir
+Rode antes: npm run tauri:build:release
+"@
+  }
+
+  $sigPath = "$($setupExe.FullName).sig"
+  if (-not (Test-Path $sigPath)) {
+    throw @"
+Assinatura ausente: $sigPath
+Rode o build assinado: npm run tauri:build:release
+"@
+  }
+
+  $builtVersion = Get-VersionFromSetupExe $setupExe
+  if ($builtVersion -ne $Version) {
+    throw @"
+Versão do instalador ($builtVersion) diferente da versão da release ($Version).
+Rode npm run tauri:build:release com a mesma versão dos arquivos do projeto.
+"@
+  }
+
+  return $setupExe
+}
+
 function Get-ReleaseArtifacts([string] $nsisDir) {
   $files = Get-ChildItem -Path $nsisDir -File -ErrorAction SilentlyContinue
   if (-not $files) {
@@ -382,13 +387,78 @@ function Get-ReleaseArtifacts([string] $nsisDir) {
   }
 
   if (-not ($artifacts | Where-Object { $_ -like '*latest.json' })) {
-    throw "latest.json ausente em $nsisDir. Rode o build com assinatura (.exe.sig) para gerar o manifesto."
+    throw "latest.json ausente em $nsisDir (será gerado antes do upload)."
   }
   if (-not ($artifacts | Where-Object { $_ -like '*.exe' })) {
     throw "Instalador .exe ausente em $nsisDir"
   }
+  if (-not ($artifacts | Where-Object { $_ -like '*.sig' })) {
+    throw "Arquivo .sig ausente em $nsisDir. Use: npm run tauri:build:release"
+  }
 
   return $artifacts
+}
+
+function Invoke-ReleaseGitFlow {
+  param(
+    [string] $Version,
+    [string] $ReleaseBranch,
+    [switch] $DoPush
+  )
+
+  $sourceBranch = git branch --show-current
+  if (-not $sourceBranch) {
+    throw 'Não foi possível identificar a branch atual (HEAD detached?).'
+  }
+
+  $existing = git branch --list $ReleaseBranch
+  if ($existing) {
+    throw "A branch '$ReleaseBranch' já existe. Apague-a ou use -BranchName com outro nome."
+  }
+
+  $pending = git status --porcelain
+  if ($pending) {
+    Write-Host "  Alterações a commitar em '$sourceBranch':" -ForegroundColor DarkGray
+    Write-Host $pending
+    git add -A
+    git commit -m "chore(release): v$Version"
+    Write-Host "  Commit criado em $sourceBranch." -ForegroundColor Green
+  } else {
+    Write-Host "  Working tree limpo em $sourceBranch (sem novo commit)." -ForegroundColor Yellow
+  }
+
+  if ($DoPush) {
+    Write-Host "  git push origin $sourceBranch ..."
+    git push origin $sourceBranch
+    if ($LASTEXITCODE -ne 0) {
+      throw "Falha no push de $sourceBranch"
+    }
+  }
+
+  Write-Host "  Criando branch '$ReleaseBranch' ..."
+  git checkout -b $ReleaseBranch
+  if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao criar branch $ReleaseBranch"
+  }
+
+  if ($DoPush) {
+    Write-Host "  git push -u origin $ReleaseBranch ..."
+    git push -u origin $ReleaseBranch
+    if ($LASTEXITCODE -ne 0) {
+      throw "Falha no push de $ReleaseBranch"
+    }
+  }
+
+  Write-Host "  Voltando para '$sourceBranch' ..."
+  git checkout $sourceBranch
+  if ($LASTEXITCODE -ne 0) {
+    throw "Falha ao voltar para $sourceBranch"
+  }
+
+  return @{
+    SourceBranch  = $sourceBranch
+    ReleaseBranch = $ReleaseBranch
+  }
 }
 
 # --- início ---
@@ -397,7 +467,6 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
 
 Assert-Command 'git' 'Instale Git.'
-Assert-Command 'npm' 'Instale Node.js 22+.'
 Assert-Command 'gh' 'Instale: winget install GitHub.cli e rode gh auth login'
 
 $auth = gh auth status 2>&1
@@ -405,25 +474,75 @@ if ($LASTEXITCODE -ne 0) {
   throw "GitHub CLI não autenticado. Rode: gh auth login"
 }
 
-if (-not $KeyPath) {
-  $KeyPath = Join-Path $env:USERPROFILE '.tauri\easy-start.key'
+$hasSignedBuild = $false
+$nsisDirEarly = Join-Path $repoRoot 'src-tauri/target/release/bundle/nsis'
+if ((Test-Path $nsisDirEarly) -and (Get-NsisSetupExe $nsisDirEarly) -and (Test-Path "$(Get-NsisSetupExe $nsisDirEarly).sig")) {
+  $hasSignedBuild = $true
+}
+
+# Após o build: versão vem do instalador, não incrementa de novo.
+if ($hasSignedBuild -and -not $VersionOnly -and -not $Version) {
+  $SkipVersionBump = $true
 }
 
 $resolved = Resolve-NextReleaseVersion -Repo $Repo -RepoRoot $repoRoot -ExplicitVersion $Version -BumpKind $Bump -SkipVersionBump:$SkipVersionBump
 $Version = $resolved.Version
 $versionSource = $resolved.Source
 
+if ($hasSignedBuild -and -not $VersionOnly) {
+  $builtVersion = Get-VersionFromSetupExe (Get-NsisSetupExe $nsisDirEarly)
+  if ($Version -ne $builtVersion) {
+    Write-Host "Versão do build: $builtVersion (instalador em nsis/)" -ForegroundColor Cyan
+    $Version = $builtVersion
+    $versionSource = 'instalador buildado (npm run tauri:build:release)'
+  }
+}
+
+if (-not $BranchName) {
+  $BranchName = "release/$Version"
+}
+
+if ($VersionOnly) {
+  if ($hasSignedBuild -and -not $SkipVersionBump) {
+    Write-Warning 'Já existe build em nsis/. -VersionOnly só altera arquivos; rode tauri:build:release de novo se mudar a versão.'
+  }
+  if (-not $SkipVersionBump) {
+    Write-Host "Atualizando versão para $Version ..." -ForegroundColor Cyan
+    Set-ProjectVersion $repoRoot $Version
+  }
+  Write-Host ''
+  Write-Host 'Versão definida nos arquivos.' -ForegroundColor Green
+  Write-Host 'Próximo passo:'
+  Write-Host '  npm run tauri:build:release'
+  Write-Host '  npm run release:local'
+  exit 0
+}
+
+if (-not $hasSignedBuild) {
+  throw @"
+Build assinado não encontrado em src-tauri/target/release/bundle/nsis/
+
+Ordem:
+  1. npm run tauri:build:release
+  2. npm run release:local
+
+(Se ainda não definiu a versão: npm run release:local -- -VersionOnly)
+"@
+}
+
 if ($DryRun) {
   Write-Host ''
   Write-Host "Dry-run: versão detectada = $Version" -ForegroundColor Green
   Write-Host "         tag = easy-start-v$Version"
+  Write-Host "         branch = $BranchName"
   Write-Host "         origem: $versionSource"
   exit 0
 }
 
 if ($Confirm) {
   Write-Host ''
-  Write-Host "Será publicada a versão $Version ($versionSource)." -ForegroundColor Yellow
+  Write-Host "Versão $Version ($versionSource)." -ForegroundColor Yellow
+  Write-Host 'Publicará release no GitHub (git + assets do build).'
   $answer = Read-Host 'Continuar? [S/n]'
   if ($answer -match '^[nN]') {
     Write-Host 'Cancelado.'
@@ -440,57 +559,46 @@ Write-Host "=== Release local: v$Version ($tag) ===" -ForegroundColor Cyan
 Write-Host "    Origem: $versionSource" -ForegroundColor DarkGray
 Write-Host ''
 
+$step = 1
+$totalSteps = 4
+
 if (-not $SkipVersionBump) {
-  Write-Host '[1/5] Atualizando versão nos arquivos do projeto ...' -ForegroundColor Cyan
+  Write-Host "[$step/$totalSteps] Atualizando versão nos arquivos ..." -ForegroundColor Cyan
   Set-ProjectVersion $repoRoot $Version
+  $step++
 } else {
-  Write-Host '[1/5] Versão nos arquivos (sem alteração):' (Get-CurrentProjectVersion $repoRoot) -ForegroundColor Cyan
+  Write-Host "[$step/$totalSteps] Versão da release: $Version ($versionSource)" -ForegroundColor Cyan
+  $confVersion = Get-CurrentProjectVersion $repoRoot
+  if ($confVersion -ne $Version) {
+    Write-Warning "tauri.conf.json está em $confVersion; o instalador buildado é $Version."
+  }
+  $step++
 }
 
-if (-not $SkipCommit) {
-  Write-Host '[2/5] Commit git ...' -ForegroundColor Cyan
-  $pending = git status --porcelain
-  if ($pending) {
-    git add -A
-    git commit -m "chore(release): v$Version"
-    Write-Host "  Commit criado." -ForegroundColor Green
-  } else {
-    Write-Host '  Nada para commitar (working tree limpo).' -ForegroundColor Yellow
-  }
+if (-not $SkipGit) {
+  Write-Host "[$step/$totalSteps] Git: commit, branch $BranchName, volta à branch anterior ..." -ForegroundColor Cyan
+  $gitResult = Invoke-ReleaseGitFlow -Version $Version -ReleaseBranch $BranchName -DoPush:$Push
+  Write-Host "  Branch principal: $($gitResult.SourceBranch)" -ForegroundColor DarkGray
+  Write-Host "  Branch release:  $($gitResult.ReleaseBranch)" -ForegroundColor DarkGray
+  $step++
 } else {
-  Write-Host '[2/5] Commit git ignorado (-SkipCommit).' -ForegroundColor Yellow
+  Write-Host "[$step/$totalSteps] Git ignorado (-SkipGit)." -ForegroundColor Yellow
+  $step++
 }
 
-if (-not $SkipBuild) {
-  Write-Host '[3/5] Build Tauri (NSIS + updater) ...' -ForegroundColor Cyan
-  if (-not (Test-Path $KeyPath)) {
-    throw @"
-Chave de assinatura não encontrada: $KeyPath
-Gere com: npm run tauri signer generate -- -w `"$KeyPath`" --ci
-"@
-  }
-
-  Set-TauriSigningEnv $KeyPath
-
-  $buildExit = Invoke-TauriReleaseBuild $repoRoot
-  if ($buildExit -ne 0) {
-    throw 'Build Tauri falhou.'
-  }
-  Write-Host '  Build concluído.' -ForegroundColor Green
-} else {
-  Write-Host '[3/5] Build ignorado (-SkipBuild).' -ForegroundColor Yellow
-}
-
+Write-Host "[$step/$totalSteps] Artefatos do build assinado ..." -ForegroundColor Cyan
 $nsisDir = Find-NsisBundleDir $repoRoot
+Assert-SignedBuildArtifacts -NsisDir $nsisDir -Version $Version | Out-Null
 
-Write-Host '  Gerando latest.json (mesmo formato do tauri-action no CI) ...' -ForegroundColor Cyan
+Write-Host '  Gerando latest.json ...' -ForegroundColor DarkGray
 $releaseNotes = if ($Notes) { $Notes } else { "Easy Start v$Version" }
 Ensure-UpdaterLatestJson -NsisDir $nsisDir -Version $Version -Tag $tag -Repo $Repo -Notes $releaseNotes | Out-Null
 
 $artifactPaths = Get-ReleaseArtifacts $nsisDir
-Write-Host "  Artefatos: $($artifactPaths.Count) arquivo(s) em $nsisDir" -ForegroundColor DarkGray
+Write-Host "  $($artifactPaths.Count) arquivo(s) em $nsisDir" -ForegroundColor DarkGray
+$step++
 
-Write-Host '[4/5] Publicando no GitHub ...' -ForegroundColor Cyan
+Write-Host "[$step/$totalSteps] Publicando no GitHub ..." -ForegroundColor Cyan
 
 $releaseExists = $false
 gh release view $tag --repo $Repo 2>$null | Out-Null
@@ -537,20 +645,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host '  Assets enviados.' -ForegroundColor Green
 
-if ($Push) {
-  $branch = git branch --show-current
-  if (-not $branch) {
-    Write-Warning 'Push ignorado: HEAD detached.'
-  } else {
-    Write-Host "  git push origin $branch ..." -ForegroundColor DarkGray
-    git push origin $branch
-    if ($LASTEXITCODE -ne 0) {
-      throw "Falha no push para origin/$branch"
-    }
-  }
-}
-
-Write-Host '[5/5] Verificação do manifesto ...' -ForegroundColor Cyan
+Write-Host 'Verificação do manifesto ...' -ForegroundColor Cyan
 if (-not $SkipVerify) {
   $verified = $false
   $verifyScript = Join-Path $PSScriptRoot 'verify-update-manifest.ps1'
@@ -577,9 +672,10 @@ Write-Host ''
 Write-Host '=== Release publicada ===' -ForegroundColor Green
 Write-Host "  Tag:       $tag"
 Write-Host "  Versão:    $Version"
+Write-Host "  Branch:    $BranchName"
 Write-Host "  Release:   https://github.com/$Repo/releases/tag/$tag"
 Write-Host "  Updater:   $manifestUrl"
 Write-Host ''
-if (-not $Push -and -not $SkipCommit) {
-  Write-Host 'Dica: use -Push para enviar o commit ao remoto (evite push em release/* se o Actions também publica).' -ForegroundColor DarkGray
+if (-not $Push -and -not $SkipGit) {
+  Write-Host 'Dica: use -Push para enviar main e release/* ao remoto.' -ForegroundColor DarkGray
 }

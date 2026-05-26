@@ -53,54 +53,47 @@ O script configura permissões **Read and write** do Actions e o secret `TAURI_S
 
 ### Publicar na sua máquina (recomendado)
 
-Build, assinatura e upload para o GitHub Release — sem depender do Actions:
+**Ordem:** build assinado primeiro; depois **um** `release:local` (git + GitHub).
 
 ```powershell
-.\scripts\release-local.ps1
-# ou: npm run release:local
+# 0) Opcional: definir próxima versão nos arquivos (antes do build)
+npm run release:local -- -VersionOnly
+# ou: npm run release:local -- 1.2.0 -VersionOnly
+
+# 1) Build assinado
+npm run tauri:build:release
+
+# 2) Commit, branch release/*, volta para main, publica no GitHub
+npm run release:local
 ```
 
-Sem argumento, o script **detecta a próxima versão**: compara `tauri.conf.json` com a última release `easy-start-v*` no GitHub e incrementa o **patch** (ex.: publicada `1.1.3` → publica `1.1.4`). Se os arquivos já estiverem em `1.1.4` e o GitHub ainda em `1.1.3`, usa `1.1.4`.
-
-Versão manual ou outro incremento:
-
-```powershell
-.\scripts\release-local.ps1 1.2.0
-npm run release:local -- -Bump minor
-npm run release:local -- -Confirm
-```
-
-O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), gera `latest.json` a partir do `.exe` + `.sig` (o `tauri build` só não cria esse JSON — no CI isso é feito pelo `tauri-action`), cria o release `easy-start-v*` e envia os assets.
-
-Opções úteis:
+O passo 2 usa a **versão do instalador** em `nsis/` (não incrementa de novo se o build já existe).
 
 | Flag | Efeito |
 |------|--------|
-| `-Bump minor` / `major` | Tipo de incremento na detecção automática |
-| `-DryRun` | Só mostra qual versão seria usada |
-| `-Confirm` | Pede confirmação antes do build |
-| `-SkipVersionBump` | Só build/publica com a versão já nos arquivos |
-| `-SkipBuild` | Só envia artefatos já gerados |
+| `-VersionOnly` | Só atualiza versão nos arquivos (rode **antes** do build) |
+| `-SkipVersionBump` | Não altera arquivos; confia no instalador buildado |
+| `-SkipGit` | Só publica no GitHub (sem commit/branch) |
+| `-Push` | `git push` de main e `release/*` |
 | `-Force` | Recria o release se a tag já existir |
-| `-Push` | Envia o commit para `origin` (cuidado: push em `release/*` dispara o CI também) |
+| `-Bump minor` | Com `-VersionOnly`, tipo de incremento |
+| `-DryRun` | Mostra qual versão seria usada |
 
-Chave ausente: `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-start.key" --ci --force`
-
-Se o build pedir `Password:` manualmente, use o script `release-local` (já configura as variáveis) ou no PowerShell:
+**Build assinado** (chave em `%USERPROFILE%\.tauri\easy-start.key`):
 
 ```powershell
 npm run tauri:build:release
 ```
 
-Ou manualmente (não use só `npm run tauri:build` — as variáveis de assinatura não são aplicadas):
+Não use só `npm run tauri:build` — não aplica a chave de assinatura.
+
+Chave ausente:
 
 ```powershell
-$key = "$env:USERPROFILE\.tauri\easy-start.key"
-$env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content -Raw $key).TrimEnd()
-$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
-Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY_PATH -ErrorAction SilentlyContinue
-npx tauri build --config src-tauri/tauri.ci.conf.json --ci
+npm run tauri signer generate -- -w "$env:USERPROFILE\.tauri\easy-start.key" --ci --force
 ```
+
+Depois atualize `plugins.updater.pubkey` em `src-tauri/tauri.conf.json` com o conteúdo de `easy-start.key.pub`.
 
 ### Publicar via GitHub Actions
 
