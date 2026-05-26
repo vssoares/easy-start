@@ -51,7 +51,29 @@ Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
 
 O script configura permissões **Read and write** do Actions e o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key`. A chave gerada com `--ci` não usa senha; nesse caso `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` não é necessário.
 
-### Publicar uma versão
+### Publicar na sua máquina (recomendado)
+
+Build, assinatura e upload para o GitHub Release — sem depender do Actions:
+
+```powershell
+.\scripts\release-local.ps1 1.1.4
+# ou: npm run release:local -- 1.1.4
+```
+
+O script: atualiza a versão nos arquivos, commita, compila com `TAURI_SIGNING_PRIVATE_KEY` (`%USERPROFILE%\.tauri\easy-start.key`), cria o release `easy-start-v1.1.4` e envia `.exe`, `.sig` e `latest.json`.
+
+Opções úteis:
+
+| Flag | Efeito |
+|------|--------|
+| `-SkipVersionBump` | Só build/publica com a versão já nos arquivos |
+| `-SkipBuild` | Só envia artefatos já gerados |
+| `-Force` | Recria o release se a tag já existir |
+| `-Push` | Envia o commit para `origin` (cuidado: push em `release/*` dispara o CI também) |
+
+Chave ausente: `npm run tauri signer generate -- -w "%USERPROFILE%\.tauri\easy-start.key" --ci`
+
+### Publicar via GitHub Actions
 
 ```powershell
 .\scripts\prepare-release.ps1 1.0.1
