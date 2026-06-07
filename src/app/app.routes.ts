@@ -5,6 +5,7 @@ import { MonitorsPageComponent } from './pages/monitors/monitors-page.component'
 import { NodePageComponent } from './pages/node/node-page.component';
 import { PlaceholderPageComponent } from './pages/placeholder/placeholder-page.component';
 import { QuickAccessPageComponent } from './pages/quick-access/quick-access-page.component';
+import { SystemInfoPageComponent } from './pages/system-info/system-info-page.component';
 
 export const routes: Routes = [
   {
@@ -18,6 +19,7 @@ export const routes: Routes = [
       { path: 'node', component: NodePageComponent },
       { path: 'acesso-rapido', component: QuickAccessPageComponent },
       { path: 'monitores', component: MonitorsPageComponent },
+      { path: 'sistema', component: SystemInfoPageComponent },
       { path: 'loja', component: PlaceholderPageComponent, data: { title: 'Loja' } },
       {
         path: 'estatisticas',

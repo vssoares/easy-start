@@ -46,7 +46,7 @@ import { MonitorService } from '../../services/monitor.service';
         <article class="rounded-xl border border-white/10 bg-app-surface px-4 py-3">
           <p class="text-xs uppercase tracking-wide text-zinc-500">Principal</p>
           <p class="mt-1 truncate text-xl font-semibold text-white">
-            {{ monitors.primaryMonitor()?.name ?? 'Nenhum' }}
+            {{ monitors.primaryMonitor().name || 'Nenhum' }}
           </p>
         </article>
         <article class="rounded-xl border border-white/10 bg-#16161a px-4 py-3">

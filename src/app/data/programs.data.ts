@@ -10,6 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   // { id: 'stats', label: 'Estatísticas', icon: 'stats', route: '/estatisticas' },
   { id: 'quick', label: 'Acesso rápido', icon: 'quick', route: '/acesso-rapido' },
   { id: 'monitors', label: 'Monitores', icon: 'monitors', route: '/monitores' },
+  { id: 'system', label: 'Meu PC', icon: 'system', route: '/sistema' },
   { id: 'node', label: 'Node', icon: 'node', route: '/node' },
   // { id: 'tools', label: 'Ferramentas', icon: 'tools', route: '/ferramentas' },
 ];

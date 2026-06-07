@@ -101,6 +101,8 @@ mod platform {
     const DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME: u32 = 1;
     const DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME: u32 = 2;
     const CCHDEVICENAME: usize = 32;
+    const MONITOR_DEFAULTTOPRIMARY: u32 = 1;
+    const MONITORINFOF_PRIMARY: u32 = 1;
     const DISPLAYCONFIG_MAX_MONITOR_NAME: usize = 64;
     const DISPLAYCONFIG_MAX_DEVICE_PATH: usize = 128;
 
@@ -243,6 +245,16 @@ mod platform {
 
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
+    struct MonitorInfoExW {
+        cb_size: u32,
+        rc_monitor: RectL,
+        rc_work: RectL,
+        dw_flags: u32,
+        sz_device: [u16; CCHDEVICENAME],
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy)]
     struct DisplayConfigTargetDeviceName {
         header: DisplayConfigDeviceInfoHeader,
         flags: u32,
@@ -280,6 +292,10 @@ mod platform {
         ) -> i32;
 
         fn DisplayConfigGetDeviceInfo(request_packet: *mut DisplayConfigDeviceInfoHeader) -> i32;
+
+        fn MonitorFromPoint(pt: PointL, dw_flags: u32) -> isize;
+
+        fn GetMonitorInfoW(h_monitor: isize, lpmi: *mut MonitorInfoExW) -> i32;
     }
 
     pub fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
@@ -336,18 +352,17 @@ mod platform {
             return Err("Mantenha pelo menos um monitor ativo.".into());
         }
 
-        let active_paths = select_active_paths(&paths, &desired_targets)?;
-        apply_topology(&active_paths)?;
-
+        // O Windows exige um monitor em (0,0) antes de desativar o principal.
+        let mut paths = paths;
         if !enabled && current.is_primary {
-            if let Some(next) = list_monitors()?
-                .into_iter()
-                .find(|monitor| monitor.is_enabled)
-                .map(|monitor| monitor.id)
-            {
-                apply_primary(&next)?;
+            if let Some(next_id) = pick_primary_candidate(&before, Some(monitor_id)) {
+                apply_primary(&next_id)?;
+                (paths, _) = query_display_config(QDC_ALL_PATHS | QDC_VIRTUAL_MODE_AWARE)?;
             }
         }
+
+        let active_paths = select_active_paths(&paths, &desired_targets)?;
+        apply_topology(&active_paths)?;
 
         Ok(MonitorActionResult {
             message: if enabled {
@@ -473,9 +488,7 @@ mod platform {
                 device_name: target_name.1,
                 connection: output_technology_label(path.target_info.output_technology),
                 is_enabled: path_is_active(path),
-                is_primary: source_mode
-                    .map(|mode| mode.position.x == 0 && mode.position.y == 0)
-                    .unwrap_or(false),
+                is_primary: false,
                 x: source_mode.map(|mode| mode.position.x),
                 y: source_mode.map(|mode| mode.position.y),
                 width: source_mode.map(|mode| mode.width),
@@ -483,13 +496,101 @@ mod platform {
             });
         }
 
-        if !monitors.iter().any(|monitor| monitor.is_primary) {
-            if let Some(first_active) = monitors.iter_mut().find(|monitor| monitor.is_enabled) {
-                first_active.is_primary = true;
+        assign_primary_monitor(&mut monitors);
+
+        Ok(monitors)
+    }
+
+    /// Garante um único monitor principal (evita dois em (0,0) no modo duplicado).
+    fn assign_primary_monitor(monitors: &mut [MonitorInfo]) {
+        for monitor in monitors.iter_mut() {
+            monitor.is_primary = false;
+        }
+
+        let primary_device = primary_gdi_device_name();
+
+        let index = primary_device
+            .as_deref()
+            .and_then(|device| {
+                monitors
+                    .iter()
+                    .position(|monitor| monitor.is_enabled && gdi_devices_match(&monitor.display_name, device))
+            })
+            .or_else(|| pick_primary_candidate(monitors, None).and_then(|id| monitors.iter().position(|m| m.id == id)));
+
+        if let Some(index) = index {
+            monitors[index].is_primary = true;
+        }
+    }
+
+    fn pick_primary_candidate(monitors: &[MonitorInfo], exclude_id: Option<&str>) -> Option<String> {
+        let candidates: Vec<&MonitorInfo> = monitors
+            .iter()
+            .filter(|monitor| {
+                monitor.is_enabled && exclude_id.map(|id| monitor.id != id).unwrap_or(true)
+            })
+            .collect();
+
+        if candidates.is_empty() {
+            return None;
+        }
+
+        if let Some(device) = primary_gdi_device_name() {
+            if let Some(monitor) = candidates
+                .iter()
+                .find(|monitor| gdi_devices_match(&monitor.display_name, &device))
+            {
+                return Some(monitor.id.clone());
             }
         }
 
-        Ok(monitors)
+        candidates
+            .iter()
+            .filter(|monitor| monitor.x.is_some() && monitor.y.is_some())
+            .min_by_key(|monitor| (monitor.x.unwrap_or(0), monitor.y.unwrap_or(0)))
+            .or_else(|| candidates.first())
+            .map(|monitor| monitor.id.clone())
+    }
+
+    fn primary_gdi_device_name() -> Option<String> {
+        unsafe {
+            let h_monitor = MonitorFromPoint(PointL { x: 0, y: 0 }, MONITOR_DEFAULTTOPRIMARY);
+            if h_monitor == 0 {
+                return None;
+            }
+
+            let mut info = zeroed::<MonitorInfoExW>();
+            info.cb_size = size_of::<MonitorInfoExW>() as u32;
+
+            if GetMonitorInfoW(h_monitor, &mut info) == 0 {
+                return None;
+            }
+
+            if info.dw_flags & MONITORINFOF_PRIMARY == 0 {
+                return None;
+            }
+
+            let device = utf16_to_string(&info.sz_device);
+            if device.is_empty() {
+                None
+            } else {
+                Some(device)
+            }
+        }
+    }
+
+    fn gdi_devices_match(left: &str, right: &str) -> bool {
+        let normalize = |value: &str| {
+            value
+                .trim()
+                .trim_start_matches(r"\\.\")
+                .to_ascii_uppercase()
+        };
+
+        let left = normalize(left);
+        let right = normalize(right);
+
+        left == right || left.ends_with(&right) || right.ends_with(&left)
     }
 
     fn select_active_paths(
@@ -556,13 +657,16 @@ mod platform {
 
     fn apply_topology(paths: &[DisplayConfigPathInfo]) -> Result<(), String> {
         let awareness_flags = sdc_awareness_flags(paths);
+        let topology_flags =
+            SDC_APPLY | SDC_TOPOLOGY_SUPPLIED | SDC_ALLOW_PATH_ORDER_CHANGES | awareness_flags;
+
         let status = unsafe {
             SetDisplayConfig(
                 paths.len() as u32,
                 paths.as_ptr(),
                 0,
                 null(),
-                SDC_APPLY | SDC_TOPOLOGY_SUPPLIED | SDC_ALLOW_PATH_ORDER_CHANGES | awareness_flags,
+                topology_flags,
             )
         };
 
@@ -570,17 +674,39 @@ mod platform {
             return Ok(());
         }
 
+        if status != ERROR_INVALID_PARAMETER && status != ERROR_BAD_CONFIGURATION {
+            return Err(format_windows_error("SetDisplayConfig", status));
+        }
+
+        let (all_paths, all_modes) =
+            query_display_config(QDC_ALL_PATHS | QDC_VIRTUAL_MODE_AWARE)?;
+        let selected_ids: HashSet<String> = paths.iter().map(monitor_id).collect();
+        let mut filtered_paths = Vec::new();
+
+        for path in &all_paths {
+            let id = monitor_id(path);
+            if selected_ids.contains(&id) {
+                filtered_paths.push(prepared_active_path(*path));
+            }
+        }
+
+        if filtered_paths.is_empty() {
+            return Err(format_windows_error("SetDisplayConfig", status));
+        }
+
+        let config_flags = SDC_APPLY
+            | SDC_USE_SUPPLIED_DISPLAY_CONFIG
+            | SDC_SAVE_TO_DATABASE
+            | SDC_ALLOW_CHANGES
+            | awareness_flags;
+
         let status = unsafe {
             SetDisplayConfig(
-                paths.len() as u32,
-                paths.as_ptr(),
-                0,
-                null(),
-                SDC_APPLY
-                    | SDC_USE_SUPPLIED_DISPLAY_CONFIG
-                    | SDC_SAVE_TO_DATABASE
-                    | SDC_ALLOW_CHANGES
-                    | awareness_flags,
+                filtered_paths.len() as u32,
+                filtered_paths.as_ptr(),
+                all_modes.len() as u32,
+                all_modes.as_ptr(),
+                config_flags,
             )
         };
 

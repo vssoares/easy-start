@@ -3,9 +3,11 @@ mod monitors;
 mod nvm;
 mod port;
 mod quick_tools;
+mod system_info;
 
 use install::{check_winget, install_apps};
 use monitors::{list_monitors, set_monitor_enabled, set_primary_monitor};
+use system_info::{get_system_info, open_driver_page};
 use nvm::{
     ensure_nvm, install_node_version, list_node_versions, node_manager_supported, nvm_status,
     uninstall_node_version, use_node_version,
@@ -42,6 +44,8 @@ pub fn run() {
             list_monitors,
             set_monitor_enabled,
             set_primary_monitor,
+            get_system_info,
+            open_driver_page,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {

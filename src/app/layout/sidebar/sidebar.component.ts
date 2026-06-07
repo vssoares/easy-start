@@ -73,6 +73,13 @@ import { UpdateService } from '../../services/update.service';
                   <path d="M8 20h8M12 16v4" stroke-linecap="round" />
                 </svg>
               }
+              @case ('system') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8M12 17v4" stroke-linecap="round" />
+                  <path d="M7 8h2M11 8h6M7 11h4M13 11h4" stroke-linecap="round" />
+                </svg>
+              }
               @default {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
