@@ -32,12 +32,13 @@ app-root {
   background: var(--color-app-bg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  user-select: none;
+  user-select: text;
 }
 
-input,
-textarea {
-  user-select: text;
+/* Texto selecionável/copiável em todo o app; só controles e a barra arrastável ficam sem seleção. */
+button,
+[data-drag-region] {
+  user-select: none;
 }
 
 .scrollbar-thin {

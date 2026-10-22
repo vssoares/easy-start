@@ -29,3 +29,21 @@ export interface SystemInfo {
   gpus: GpuInfo[];
   disks: DiskInfo[];
 }
+
+export interface GpuDriverStatus {
+  vendor: GpuInfo['vendor'];
+  gpuName: string;
+  installed: string;
+  latest: string;
+  downloadUrl: string;
+  sizeText: string;
+  officialPage: string;
+  message: string;
+  canAutoInstall: boolean;
+  updateAvailable: boolean;
+}
+
+export interface DriverProgress {
+  message: string;
+  percent: number;
+}

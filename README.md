@@ -29,7 +29,7 @@ Abre em `http://localhost:4200`. Os comandos nativos (winget, NVM, monitores…)
 npm run dev
 ```
 
-Sobe o `ng serve`, compila o processo principal (`electron/`) e abre o Electron apontando para `http://localhost:4200`.
+Sobe o `ng serve` (recarrega o Angular ao salvar), compila o processo principal (`electron/`) em modo watch e abre o Electron em `http://localhost:4200`. Ao salvar qualquer arquivo em `electron/`, o Electron reinicia sozinho. Fechar a janela encerra tudo. Argumentos extras vão para o Electron (ex.: `npm run dev -- --user-data-dir=...`).
 
 ## Build de produção
 

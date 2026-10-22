@@ -28,6 +28,12 @@ import { SystemInfoService } from '../../services/system-info.service';
         </p>
       }
 
+      @if (sys.driverResult()) {
+        <p class="mb-4 shrink-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          {{ sys.driverResult() }}
+        </p>
+      }
+
       @if (sys.loading() && !sys.info()) {
         <section class="flex flex-col gap-4">
           <section class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -154,24 +160,61 @@ import { SystemInfoService } from '../../services/system-info.service';
                     </section>
 
                     @if (gpu.downloadUrl) {
-                      <footer class="mt-4 flex items-center gap-2">
-                        <button
-                          type="button"
-                          class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:opacity-40"
-                          [class]="downloadBtnClass(gpu)"
-                          [disabled]="sys.loading()"
-                          (click)="sys.openDriverPage(gpu)"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round" />
-                          </svg>
-                          Baixar driver {{ gpu.vendor !== 'other' ? gpu.vendor.toUpperCase() : '' }}
-                        </button>
-                        @if (sys.isDriverOutdated(gpu.driverDate)) {
-                          <p class="text-xs text-zinc-500">
-                            Driver com mais de {{ sys.driverAgeDays(gpu.driverDate) }} dias — verifique se há atualizações
+                      @let status = sys.driverStatus()[gpu.name];
+                      @let busy = sys.installingGpu() === gpu.name;
+                      <footer class="mt-4 space-y-3">
+                        @if (sys.driverChecking()[gpu.name]) {
+                          <p class="text-xs text-zinc-500">Consultando a versão mais recente no site do fabricante…</p>
+                        } @else if (status?.message) {
+                          <p class="text-xs" [class]="status!.updateAvailable ? 'text-amber-300' : 'text-zinc-400'">
+                            {{ status!.message }}
                           </p>
                         }
+
+                        @if (busy && sys.driverProgress(); as progress) {
+                          <div>
+                            <p class="mb-1 text-xs text-zinc-300">{{ progress.message }}</p>
+                            <div class="h-2 w-full rounded-full bg-white/10">
+                              <div
+                                class="h-full rounded-full bg-app-accent transition-all"
+                                [style.width.%]="progress.percent"
+                              ></div>
+                            </div>
+                          </div>
+                        }
+
+                        <div class="flex flex-wrap items-center gap-2">
+                          @if (status?.canAutoInstall) {
+                            <button
+                              type="button"
+                              class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition disabled:opacity-40"
+                              [class]="status!.updateAvailable ? downloadBtnClass(gpu) : 'bg-white/10 hover:bg-white/15'"
+                              [disabled]="!!sys.installingGpu()"
+                              (click)="sys.installDriver(gpu)"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-linecap="round" stroke-linejoin="round" />
+                              </svg>
+                              {{ busy ? 'Baixando…' : status!.updateAvailable ? 'Baixar e instalar ' + status!.latest : 'Baixar mesmo assim ' + status!.latest }}
+                              @if (!busy && status!.sizeText) {
+                                <span class="text-xs opacity-70">({{ status!.sizeText }})</span>
+                              }
+                            </button>
+                          }
+                          <button
+                            type="button"
+                            class="rounded-lg px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10 disabled:opacity-40"
+                            [disabled]="!!sys.installingGpu()"
+                            (click)="sys.openDriverPage(gpu)"
+                          >
+                            Página oficial {{ gpu.vendor !== 'other' ? gpu.vendor.toUpperCase() : '' }}
+                          </button>
+                          @if (sys.isDriverOutdated(gpu.driverDate) && !status?.canAutoInstall) {
+                            <p class="text-xs text-zinc-500">
+                              Driver com mais de {{ sys.driverAgeDays(gpu.driverDate) }} dias — verifique se há atualizações
+                            </p>
+                          }
+                        </div>
                       </footer>
                     }
                   </article>

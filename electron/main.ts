@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { getCommand, register } from './registry';
 
+import './commands/drivers';
 import './commands/install';
 import './commands/monitors';
 import './commands/nvm';

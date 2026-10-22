@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 /** Eventos que o processo principal pode enviar ao renderer. */
-const EVENTS = ['install-progress', 'update-progress', 'window-maximized'] as const;
+const EVENTS = ['install-progress', 'update-progress', 'window-maximized', 'driver-progress'] as const;
 type DesktopEvent = (typeof EVENTS)[number];
 
 type Envelope = { ok: true; value: unknown } | { ok: false; error: string };
