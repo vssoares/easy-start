@@ -5,13 +5,20 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { getCommand, register } from './registry';
 
+import './commands/app-settings';
 import './commands/drivers';
 import './commands/install';
+import './commands/maker';
 import './commands/monitors';
+import './commands/net';
 import './commands/nvm';
+import './commands/optimizer';
 import './commands/port';
 import './commands/quick-tools';
+import './commands/sensors';
+import './commands/startup';
 import './commands/system-info';
+import './commands/tweaks';
 
 const isDev = !app.isPackaged;
 const DEV_URL = 'http://localhost:4200';

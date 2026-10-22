@@ -23,6 +23,7 @@ import { UpdateService } from '../../services/update.service';
             [routerLinkActiveOptions]="{ exact: true }"
             class="sidebar-link relative flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
             [attr.aria-label]="item.label"
+            [attr.data-tip]="item.label"
           >
             @switch (item.icon) {
               @case ('home') {
@@ -80,6 +81,30 @@ import { UpdateService } from '../../services/update.service';
                   <path d="M7 8h2M11 8h6M7 11h4M13 11h4" stroke-linecap="round" />
                 </svg>
               }
+              @case ('sensors') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 12h4l3-8 4 16 3-8h4" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              }
+              @case ('optimize') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 17a8 8 0 1116 0" stroke-linecap="round" />
+                  <path d="M12 17l4-6" stroke-linecap="round" />
+                  <circle cx="12" cy="17" r="1" fill="currentColor" />
+                </svg>
+              }
+              @case ('startup') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 3v9" stroke-linecap="round" />
+                  <path d="M6.5 6.8a8 8 0 1011 0" stroke-linecap="round" />
+                </svg>
+              }
+              @case ('maker') {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="6" y="6" width="12" height="12" rx="1.5" />
+                  <path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke-linecap="round" />
+                </svg>
+              }
               @default {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
@@ -91,10 +116,12 @@ import { UpdateService } from '../../services/update.service';
       </nav>
 
       <div class="mt-auto flex flex-col items-center gap-2 pb-2">
-        <button
-          type="button"
+        <a
+          routerLink="/configuracoes"
+          routerLinkActive="sidebar-active"
           class="sidebar-btn relative flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
           aria-label="Configurações"
+          data-tip="Configurações"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="3" />
@@ -105,21 +132,24 @@ import { UpdateService } from '../../services/update.service';
           @if (updates.hasUpdate()) {
             <span class="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-app-accent"></span>
           }
-        </button>
-        <button
-          type="button"
-          class="sidebar-btn flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
+        </a>
+        <a
+          routerLink="/ajuda"
+          routerLinkActive="sidebar-active"
+          class="sidebar-btn relative flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
           aria-label="Ajuda"
+          data-tip="Ajuda"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="10" />
             <path d="M9.5 9.5a2.5 2.5 0 014.5 1.5c0 2-2.5 2-2.5 4M12 17h.01" stroke-linecap="round" />
           </svg>
-        </button>
+        </a>
         <button
           type="button"
-          class="sidebar-btn flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
+          class="sidebar-btn relative flex h-9 w-9 items-center justify-center rounded-xl text-zinc-500 transition-colors duration-150"
           aria-label="Perfil"
+          data-tip="Perfil"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="8" r="4" />
@@ -138,6 +168,34 @@ import { UpdateService } from '../../services/update.service';
       height: 100%;
       align-self: stretch;
       flex-shrink: 0;
+      /* Fica acima do conteúdo para os tooltips não serem cobertos. */
+      position: relative;
+      z-index: 30;
+    }
+
+    :host ::ng-deep [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #1a1a1f;
+      color: #e4e4e7;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms ease 250ms;
+      z-index: 50;
+    }
+
+    :host ::ng-deep [data-tip]:hover::after,
+    :host ::ng-deep [data-tip]:focus-visible::after {
+      opacity: 1;
     }
 
     :host ::ng-deep .sidebar-link:not(.sidebar-active):hover,

@@ -4,7 +4,7 @@ import { WINGET_MAP } from './winget-map.data';
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Início', icon: 'home', route: '/inicio' },
-  // { id: 'network', label: 'Rede', icon: 'network', route: '/rede' },
+  { id: 'network', label: 'Rede', icon: 'network', route: '/rede' },
   { id: 'library', label: 'Biblioteca', icon: 'library', route: '/biblioteca' },
   // { id: 'store', label: 'Loja', icon: 'store', route: '/loja' },
   // { id: 'stats', label: 'Estatísticas', icon: 'stats', route: '/estatisticas' },
@@ -12,7 +12,10 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'monitors', label: 'Monitores', icon: 'monitors', route: '/monitores' },
   { id: 'system', label: 'Meu PC', icon: 'system', route: '/sistema' },
   { id: 'node', label: 'Node', icon: 'node', route: '/node' },
-  // { id: 'tools', label: 'Ferramentas', icon: 'tools', route: '/ferramentas' },
+  { id: 'sensors', label: 'Sensores', icon: 'sensors', route: '/sensores' },
+  { id: 'maker', label: 'Maker', icon: 'maker', route: '/maker' },
+  { id: 'optimize', label: 'Otimização', icon: 'optimize', route: '/otimizacao' },
+  { id: 'startup', label: 'Inicialização', icon: 'startup', route: '/inicializacao' },
 ];
 
 export const CATEGORIES: CategoryItem[] = [
