@@ -117,34 +117,85 @@ register('window_is_maximized', (_args, { sender }) => windowOf(sender)?.isMaxim
 register('app_info', () => ({ version: app.getVersion(), packaged: app.isPackaged }));
 
 // ---- Auto-update (electron-updater + GitHub Releases) ----
+// Totalmente automático: ao abrir, o app checa, baixa e instala sem pedir confirmação.
+
+const UPDATE_RECHECK_MS = 4 * 60 * 60 * 1000;
+
+type UpdateState =
+  | { status: 'idle' | 'checking' | 'ready' | 'skipped' }
+  | { status: 'downloading'; version: string; percent: number }
+  | { status: 'error'; message: string };
+
+let updateState: UpdateState = { status: 'idle' };
+/** Só a checagem de abertura reinicia o app na hora; as periódicas instalam ao fechar. */
+let installWhenDownloaded = false;
+let checkInFlight = false;
+
+function setUpdateState(state: UpdateState): void {
+  updateState = state;
+  mainWindow?.webContents.send('update-state', state);
+}
 
 function setupAutoUpdater(): void {
-  autoUpdater.autoDownload = false;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    setUpdateState({ status: 'downloading', version: info.version, percent: 0 });
+  });
+
+  autoUpdater.on('update-not-available', () => setUpdateState({ status: 'idle' }));
 
   autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update-progress', { percent: Math.floor(progress.percent) });
+    if (updateState.status === 'downloading') {
+      setUpdateState({ ...updateState, percent: Math.floor(progress.percent) });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    setUpdateState({ status: 'ready' });
+    if (installWhenDownloaded) {
+      // Instalação silenciosa (sem assistente) e o app reabre sozinho.
+      setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    }
+  });
+
+  autoUpdater.on('error', (error) => {
+    checkInFlight = false;
+    setUpdateState({ status: 'error', message: error?.message ?? String(error) });
   });
 }
 
-register('update_check', async () => {
+async function checkForUpdates(installNow: boolean): Promise<void> {
   if (!app.isPackaged) {
-    return { available: false, version: null };
+    setUpdateState({ status: 'skipped' });
+    return;
   }
-  const result = await autoUpdater.checkForUpdates();
-  return {
-    available: result?.isUpdateAvailable ?? false,
-    version: result?.updateInfo.version ?? null,
-  };
-});
+  // Já baixando ou pronto: não reinicia o processo de atualização.
+  if (checkInFlight || updateState.status === 'downloading' || updateState.status === 'ready') {
+    return;
+  }
 
-register('update_download', async () => {
-  await autoUpdater.downloadUpdate();
-});
+  checkInFlight = true;
+  installWhenDownloaded = installNow;
+  setUpdateState({ status: 'checking' });
 
-register('update_install', () => {
-  // Instala em modo silencioso e reabre o app ao terminar.
-  setImmediate(() => autoUpdater.quitAndInstall(true, true));
-});
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch {
+    // O evento 'error' já informou a interface.
+  } finally {
+    checkInFlight = false;
+  }
+}
+
+function startAutoUpdate(): void {
+  void checkForUpdates(true);
+  setInterval(() => void checkForUpdates(false), UPDATE_RECHECK_MS);
+}
+
+register('update_state', () => updateState);
+register('update_check', () => checkForUpdates(true));
 
 // ---- Ciclo de vida ----
 
@@ -162,6 +213,7 @@ if (!app.requestSingleInstanceLock()) {
     registerAppProtocol();
     mainWindow = createWindow();
     setupAutoUpdater();
+    mainWindow.webContents.once('did-finish-load', startAutoUpdate);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow();

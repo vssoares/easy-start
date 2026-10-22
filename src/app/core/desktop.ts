@@ -1,5 +1,5 @@
 /** Ponte com o processo principal do Electron (exposta pelo preload como `window.desktop`). */
-type DesktopEvent = 'install-progress' | 'update-progress' | 'window-maximized' | 'driver-progress';
+type DesktopEvent = 'install-progress' | 'update-progress' | 'window-maximized' | 'driver-progress' | 'update-state';
 
 interface DesktopApi {
   invoke<T>(command: string, args?: unknown): Promise<T>;
