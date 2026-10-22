@@ -1,15 +1,16 @@
 # Easy Start
 
-Launcher desktop no estilo biblioteca (ExitLag), com **Angular 22**, **Tailwind CSS 4** e **Tauri 2**.
+Launcher desktop no estilo biblioteca (ExitLag), com **Angular 22**, **Tailwind CSS 4** e **Electron**. Instala programas via winget, gerencia versões do Node (NVM), monitores, portas e mostra informações do sistema (somente Windows).
 
 ## Requisitos
 
 - Node.js **22.22.3+** (Angular 22 RC exige essa versão mínima)
-- Rust + Cargo (para Tauri)
+- Windows 10 ou superior
 
 ```bash
 nvm install 22.22.3
 nvm use 22.22.3
+npm install
 ```
 
 ## Desenvolvimento
@@ -17,101 +18,83 @@ nvm use 22.22.3
 ### Apenas web (navegador)
 
 ```bash
-npm install
 npm start
 ```
 
-Abre em `http://localhost:4200`.
+Abre em `http://localhost:4200`. Os comandos nativos (winget, NVM, monitores…) só funcionam dentro do Electron.
 
-### Desktop (Tauri)
+### Desktop (Electron)
 
 ```bash
-npm run tauri:dev
+npm run dev
 ```
+
+Sobe o `ng serve`, compila o processo principal (`electron/`) e abre o Electron apontando para `http://localhost:4200`.
 
 ## Build de produção
 
 ```bash
-npm run tauri:build
+npm run dist:win
 ```
 
-O instalador fica em `src-tauri/target/release/bundle/`.
+O instalador (`EasyStart-Setup-<versão>.exe`), o `.blockmap` e o `latest.yml` ficam em `release/`.
 
-## Releases no GitHub
+## Releases e atualização automática
 
-Publicação **local** (scripts `release:version`, `tauri:build:release`, `release:publish`). O workflow **GitHub Actions** em `.github/workflows/release.yml` está **comentado/desativado**.
+O app usa `electron-updater` com **GitHub Releases** (`vssoares/easy-start`).
 
-O manifest `latest.json` fica em `/releases/latest/download/latest.json` para atualização automática no app.
+### Publicar uma nova versão (GitHub Actions — recomendado)
 
-### Configuração (uma vez)
+```bash
+npm version patch   # ou minor / major — atualiza o package.json e cria a tag vX.Y.Z
+git push && git push --tags
+```
 
-Com o [GitHub CLI](https://cli.github.com/) autenticado (`gh auth login`):
+O workflow `.github/workflows/release.yml` roda ao detectar uma tag `vX.Y.Z`: confere se a tag bate com a versão do `package.json`, faz o build e publica o release com `.exe`, `.blockmap` e `latest.yml`.
+
+### Publicar direto da sua máquina
 
 ```powershell
-.\scripts\setup-github-release.ps1
+$env:GH_TOKEN = "<personal access token com escopo repo>"
+npm version patch
+npm run dist:win:publish
+git push && git push --tags
 ```
 
-O script configura o secret `TAURI_SIGNING_PRIVATE_KEY` a partir de `%USERPROFILE%\.tauri\easy-start.key` (útil se reativar o Actions). A chave gerada com `--ci` usa **senha vazia**; o `tauri-build-signed.ps1` define `TAURI_SIGNING_PRIVATE_KEY` e passa `--ci` no build.
+O token precisa do escopo `repo`; é assim que o `electron-builder` autentica para criar o release.
 
-### Publicar na sua máquina
+### Como o update funciona no app
 
-```powershell
-# 1) Versão nos arquivos + commit + branch release/<versão> + volta para main
-npm run release:version -- 1.1.6
-
-# 2) Build assinado
-npm run tauri:build:release
-
-# 3) Upload no GitHub (.exe, .sig, latest.json)
-npm run release:publish -- 1.1.6
-```
-
-| Comando | O que faz |
-|---------|-----------|
-| `release:version` | Atualiza `package.json`, `tauri.conf.json`, etc.; commit; `release/1.1.6`; volta para `main` |
-| `tauri:build:release` | Build NSIS assinado (`.exe` + `.sig`) |
-| `release:publish` | Cria/atualiza release `easy-start-v1.1.6` no GitHub |
-
-Flags: `release:version -- -Push` · `release:publish -- -Force`
-
-Build assinado: `npm run tauri:build:release` (chave em `%USERPROFILE%\.tauri\easy-start.key`).
-
-Para reativar o CI no futuro, descomente `.github/workflows/release.yml`.
-
-### Atualização no app
-
-Com o app instalado, ao abrir a interface verifica o GitHub. Se houver versão mais nova, aparece o botão **Atualizar** na barra superior.
+1. Ao abrir, o app consulta o último release publicado no GitHub.
+2. Se a versão for maior que a instalada, aparece o botão **Atualizar para vX.Y.Z** na barra superior.
+3. Ao clicar, o instalador é baixado (com progresso), instalado em modo silencioso e o app reabre sozinho.
 
 ### O updater não aparece?
 
-1. **Release em rascunho** — `https://github.com/vssoares/easy-start/releases/latest/download/latest.json` só funciona em releases **publicados**.
-2. **Falta `latest.json`** — publique com `npm run release:publish` (precisa de `.exe`, `.sig` e manifesto).
-3. **Versão igual** — o app só oferece update se a versão no GitHub for **maior** que a instalada (ex.: instalado `1.0.6`, release `1.0.7`).
-4. **App em dev** (`tauri dev`) — use o instalador `.exe` de produção para testar updates.
-5. **Build antigo** — apps já instalados usam o endpoint gravado no instalador; publique uma versão nova com este endpoint para que usuários antigos recebam o update.
+1. **Release em rascunho** — só releases **publicados** são vistos pelo updater.
+2. **Falta o `latest.yml`** no release — ele é gerado pelo `electron-builder` e precisa estar entre os assets.
+3. **Versão igual ou menor** — o app só oferece update se a versão no GitHub for **maior** que a instalada.
+4. **App em dev** (`npm run dev`) — a checagem é ignorada; teste com o instalador de produção.
 
-Verifique o manifesto:
+### Migrando da versão Tauri
 
-```powershell
-.\scripts\verify-update-manifest.ps1
-```
-
-Deve retornar HTTP 200 e a versão nova.
+As versões `≤ 1.2.0` eram Tauri e usavam outro mecanismo de update (`latest.json`). Elas **não** atualizam sozinhas para a versão Electron: instale o primeiro `EasyStart-Setup-*.exe` manualmente (e desinstale a versão antiga). A partir daí, os updates são automáticos.
 
 ## Estrutura
 
-- `src/app/layout/` — shell, sidebar e topbar
-- `src/app/pages/library/` — tela Biblioteca / Programas
-- `src/app/components/` — tiles, categorias, índice A–Z, toast
-- `src-tauri/` — backend Rust do Tauri
+- `src/app/` — interface Angular (`layout/`, `pages/`, `components/`, `services/`)
+- `src/app/core/desktop.ts` — ponte do renderer com o Electron (`invoke`, `listen`)
+- `electron/main.ts` — janela, protocolo `app://`, auto-update
+- `electron/preload.ts` — API segura exposta como `window.desktop`
+- `electron/commands/` — comandos nativos (install, nvm, port, monitors, quick-tools, system-info)
+- `electron/native/monitors.ps1` — chamadas Win32 (`SetDisplayConfig`) compiladas via PowerShell
+- `scripts/build-electron.mjs` — bundle do main/preload com esbuild
+- `build/` — ícones do instalador
 
 ## Funcionalidades da UI
 
 - Tema escuro com destaque vermelho `#e8192c`
 - Barra lateral com navegação e indicador ativo
-- Busca global (topbar) e busca na biblioteca
-- Filtros: Todos, Jogos, Navegador, Voz
-- Grade responsiva de programas
-- Índice alfabético A–Z
+- Busca na biblioteca, filtros e índice alfabético A–Z
 - Controles de janela customizados (minimizar, maximizar, fechar)
 - Toast “Avalie sua conexão”

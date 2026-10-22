@@ -1,48 +1,106 @@
 {
   "name": "easy-start",
   "version": "1.2.0",
+  "description": "Easy Start - launcher desktop para instalar programas e gerenciar o ambiente de desenvolvimento no Windows.",
+  "author": "vssoares",
+  "private": true,
+  "main": "dist-electron/main.cjs",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build:renderer": "ng build",
+    "build:electron": "node scripts/build-electron.mjs",
+    "build": "npm run build:renderer && npm run build:electron",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:release": "powershell -ExecutionPolicy Bypass -File scripts/tauri-build-signed.ps1",
-    "release:prepare": "powershell -ExecutionPolicy Bypass -File scripts/prepare-release.ps1",
-    "release:version": "powershell -ExecutionPolicy Bypass -File scripts/release-version.ps1",
-    "release:publish": "powershell -ExecutionPolicy Bypass -File scripts/release-publish.ps1"
+    "dev": "concurrently -k -n NG,ELECTRON -c blue,green \"npm:start\" \"npm:dev:wait\"",
+    "dev:wait": "wait-on tcp:4200 && node scripts/build-electron.mjs && cross-env NODE_ENV=development electron .",
+    "typecheck": "tsc -p electron/tsconfig.json",
+    "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "dist:win": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist:win:publish": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --publish always"
   },
-  "private": true,
   "packageManager": "npm@10.9.8",
   "dependencies": {
-    "@angular/common": "^22.0.0-next.0",
-    "@angular/compiler": "^22.0.0-next.0",
-    "@angular/core": "^22.0.0-next.0",
-    "@angular/forms": "^22.0.0-next.0",
-    "@angular/platform-browser": "^22.0.0-next.0",
-    "@angular/router": "^22.0.0-next.0",
-    "@tauri-apps/api": "^2.11.0",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
-    "rxjs": "~7.8.0",
-    "tailwindcss": "^4.3.0",
-    "tslib": "^2.3.0"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@angular/build": "^22.0.0-rc.1",
     "@angular/cli": "^22.0.0-rc.1",
+    "@angular/common": "^22.0.0-next.0",
+    "@angular/compiler": "^22.0.0-next.0",
     "@angular/compiler-cli": "^22.0.0-next.0",
+    "@angular/core": "^22.0.0-next.0",
+    "@angular/forms": "^22.0.0-next.0",
+    "@angular/platform-browser": "^22.0.0-next.0",
+    "@angular/router": "^22.0.0-next.0",
     "@tailwindcss/postcss": "^4.1.12",
-    "@tauri-apps/cli": "^2.11.2",
+    "@types/node": "^26.6.5",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.3",
     "prettier": "^3.8.1",
+    "rxjs": "~7.8.0",
     "tailwindcss": "^4.1.12",
+    "tslib": "^2.3.0",
     "typescript": "~6.0.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.easystart.dev",
+    "productName": "Easy Start",
+    "files": [
+      "dist/easy-start/browser/**/*",
+      "dist-electron/**/*",
+      "!dist-electron/**/*.map",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "electron/native",
+        "to": "native"
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "artifactName": "EasyStart-Setup-${version}.${ext}",
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "vssoares",
+      "repo": "easy-start",
+      "releaseType": "release"
+    }
   }
 }
-

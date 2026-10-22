@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke, isDesktop } from '../core/desktop';
 import { GpuInfo, SystemInfo } from '../models/system-info.model';
 
 @Injectable({ providedIn: 'root' })
@@ -9,8 +9,8 @@ export class SystemInfoService {
   readonly error = signal<string | null>(null);
 
   async load(): Promise<void> {
-    if (!isTauri()) {
-      this.error.set('Disponível apenas no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Disponível apenas no app desktop (Electron).');
       return;
     }
     this.loading.set(true);
@@ -25,7 +25,7 @@ export class SystemInfoService {
   }
 
   async openDriverPage(gpu: GpuInfo): Promise<void> {
-    if (!isTauri() || !gpu.downloadUrl) return;
+    if (!isDesktop() || !gpu.downloadUrl) return;
     try {
       await invoke('open_driver_page', { url: gpu.downloadUrl });
     } catch (err) {

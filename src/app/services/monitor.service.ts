@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke, isDesktop } from '../core/desktop';
 import { MonitorActionResult, MonitorInfo } from '../models/monitor.model';
 
 @Injectable({ providedIn: 'root' })
@@ -84,8 +84,8 @@ export class MonitorService {
   }
 
   private begin(): boolean {
-    if (!isTauri()) {
-      this.error.set('Disponível apenas no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Disponível apenas no app desktop (Electron).');
       return false;
     }
 

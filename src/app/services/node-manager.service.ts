@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke, isDesktop } from '../core/desktop';
 import { NodeVersionsResponse, NvmStatus } from '../models/node.model';
 
 @Injectable({ providedIn: 'root' })
@@ -12,8 +12,8 @@ export class NodeManagerService {
   private refreshTask: Promise<void> | null = null;
 
   async refresh(): Promise<void> {
-    if (!isTauri()) {
-      this.error.set('Gerenciador Node só funciona no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Gerenciador Node só funciona no app desktop (Electron).');
       return;
     }
 
@@ -30,8 +30,8 @@ export class NodeManagerService {
   }
 
   async ensureNvm(): Promise<NvmStatus | null> {
-    if (!isTauri()) {
-      this.error.set('Gerenciador Node só funciona no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Gerenciador Node só funciona no app desktop (Electron).');
       return null;
     }
 
@@ -80,8 +80,8 @@ export class NodeManagerService {
     version: string,
     command: 'install_node_version' | 'uninstall_node_version' | 'use_node_version',
   ): Promise<void> {
-    if (!isTauri()) {
-      this.error.set('Gerenciador Node só funciona no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Gerenciador Node só funciona no app desktop (Electron).');
       return;
     }
 

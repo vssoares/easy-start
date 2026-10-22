@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke, isDesktop } from '../core/desktop';
 import {
   ActionResult,
   InspectPortResult,
@@ -17,8 +17,8 @@ export class QuickAccessService {
   readonly localIps = signal<LocalIpInfo[] | null>(null);
 
   private begin(): boolean {
-    if (!isTauri()) {
-      this.error.set('Disponível apenas no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('Disponível apenas no app desktop (Electron).');
       return false;
     }
     this.loading.set(true);

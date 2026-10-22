@@ -1,10 +1,19 @@
 import { Injectable, signal } from '@angular/core';
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isDesktop, listen } from '../core/desktop';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'installing' | 'error' | 'skipped';
 
-const UPDATE_ENDPOINT =
-  'https://github.com/vssoares/easy-start/releases/latest/download/latest.json';
+interface AppInfo {
+  version: string;
+  packaged: boolean;
+}
+
+interface UpdateCheckResult {
+  available: boolean;
+  version: string | null;
+}
+
+const RELEASES_URL = 'https://github.com/vssoares/easy-start/releases/latest';
 
 @Injectable({ providedIn: 'root' })
 export class UpdateService {
@@ -17,14 +26,20 @@ export class UpdateService {
   readonly hasUpdate = () => this.status() === 'available' && this.availableVersion() !== null;
 
   async init(): Promise<void> {
-    if (!this.shouldCheckUpdates()) {
+    if (!isDesktop()) {
       this.status.set('skipped');
       return;
     }
 
     try {
-      const { getVersion } = await import('@tauri-apps/api/app');
-      this.currentVersion.set(await getVersion());
+      const info = await invoke<AppInfo>('app_info');
+      this.currentVersion.set(info.version);
+
+      // Em desenvolvimento (app não empacotado) não há release para consultar.
+      if (!info.packaged) {
+        this.status.set('skipped');
+        return;
+      }
     } catch {
       this.currentVersion.set('');
     }
@@ -33,7 +48,7 @@ export class UpdateService {
   }
 
   async checkForUpdate(): Promise<void> {
-    if (!this.shouldCheckUpdates()) {
+    if (!isDesktop()) {
       this.status.set('skipped');
       return;
     }
@@ -42,11 +57,10 @@ export class UpdateService {
     this.errorMessage.set(null);
 
     try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
+      const result = await invoke<UpdateCheckResult>('update_check');
 
-      if (update) {
-        this.availableVersion.set(update.version);
+      if (result.available && result.version) {
+        this.availableVersion.set(result.version);
         this.status.set('available');
       } else {
         this.availableVersion.set(null);
@@ -55,12 +69,12 @@ export class UpdateService {
     } catch (err) {
       this.availableVersion.set(null);
       this.status.set('error');
-      this.errorMessage.set(this.describeCheckError(err));
+      this.errorMessage.set(this.describeError(err, 'Falha ao verificar atualizações'));
     }
   }
 
   async installUpdate(): Promise<void> {
-    if (!isTauri() || !this.hasUpdate()) {
+    if (!isDesktop() || !this.hasUpdate()) {
       return;
     }
 
@@ -68,102 +82,44 @@ export class UpdateService {
     this.progress.set(0);
     this.errorMessage.set(null);
 
+    const stopListening = listen<{ percent: number }>('update-progress', ({ percent }) =>
+      this.progress.set(percent),
+    );
+
     try {
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const { relaunch } = await import('@tauri-apps/plugin-process');
-      const update = await check();
-
-      if (!update) {
-        this.status.set('idle');
-        this.availableVersion.set(null);
-        return;
-      }
-
-      let downloaded = 0;
-      let contentLength = 0;
-
-      await update.downloadAndInstall((event) => {
-        switch (event.event) {
-          case 'Started':
-            contentLength = event.data.contentLength ?? 0;
-            this.progress.set(0);
-            break;
-          case 'Progress':
-            downloaded += event.data.chunkLength;
-            if (contentLength > 0) {
-              this.progress.set(Math.round((downloaded / contentLength) * 100));
-            }
-            break;
-          case 'Finished':
-            this.progress.set(100);
-            break;
-        }
-      });
-
-      await relaunch();
+      await invoke('update_download');
+      this.progress.set(100);
+      // O app fecha, instala e reabre sozinho.
+      await invoke('update_install');
     } catch (err) {
       this.status.set('error');
-      this.errorMessage.set(this.describeInstallError(err));
+      this.errorMessage.set(this.describeError(err, 'Falha ao instalar atualização'));
+    } finally {
+      stopListening();
     }
   }
 
-  private shouldCheckUpdates(): boolean {
-    if (!isTauri()) {
-      return false;
-    }
-
-    const host = globalThis.location?.hostname ?? '';
-    if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
-      return false;
-    }
-
-    return true;
-  }
-
-  private describeCheckError(err: unknown): string {
+  private describeError(err: unknown, fallback: string): string {
     const message = err instanceof Error ? err.message : String(err);
     const lower = message.toLowerCase();
 
     if (
-      lower.includes('status code') ||
       lower.includes('404') ||
       lower.includes('not found') ||
-      lower.includes('successful status')
+      lower.includes('latest.yml') ||
+      lower.includes('cannot find channel')
     ) {
       return (
-        'Atualização indisponível: o manifesto não foi encontrado no GitHub Releases. ' +
-        'Publique o release (não rascunho) com o asset latest.json. ' +
-        `URL: ${UPDATE_ENDPOINT}`
+        'Atualização indisponível: o release não foi encontrado no GitHub. ' +
+        'Publique o release (não rascunho) com os assets do instalador e o latest.yml. ' +
+        `URL: ${RELEASES_URL}`
       );
     }
 
-    if (lower.includes('signature') || lower.includes('assinatura')) {
-      return 'Assinatura inválida. O CI precisa do secret TAURI_SIGNING_PRIVATE_KEY igual à pubkey do app.';
+    if (lower.includes('sha512') || lower.includes('checksum')) {
+      return 'O arquivo baixado não confere com o latest.yml. Republique o release.';
     }
 
-    return message || 'Falha ao verificar atualizações';
-  }
-
-  private describeInstallError(err: unknown): string {
-    const message = err instanceof Error ? err.message : String(err);
-    const lower = message.toLowerCase();
-
-    if (
-      lower.includes('status code') ||
-      lower.includes('404') ||
-      lower.includes('not found') ||
-      lower.includes('successful status')
-    ) {
-      return (
-        'Não foi possível baixar o instalador (404). O latest.json pode apontar para um nome de arquivo errado. ' +
-        'Republice com npm run release:publish.'
-      );
-    }
-
-    if (lower.includes('signature') || lower.includes('assinatura')) {
-      return 'Assinatura inválida. Reinstale o app com a mesma chave usada no release ou alinhe a pubkey em tauri.conf.json.';
-    }
-
-    return message || 'Falha ao instalar atualização';
+    return message || fallback;
   }
 }

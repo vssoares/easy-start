@@ -1,11 +1,12 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { invoke, isDesktop, listen } from '../../core/desktop';
 
 @Component({
   selector: 'ui-window-controls',
   template: `
     <div
       class="traffic-lights group flex items-center gap-2"
-      data-tauri-drag-region="false"
+      data-drag-region="false"
       role="toolbar"
       aria-label="Controles da janela"
     >
@@ -112,45 +113,41 @@ import { Component, OnInit, signal } from '@angular/core';
     }
   `,
 })
-export class WindowControlsComponent implements OnInit {
+export class WindowControlsComponent implements OnInit, OnDestroy {
   readonly maximized = signal(false);
 
+  private stopListening: (() => void) | null = null;
+
   ngOnInit(): void {
+    if (!isDesktop()) {
+      return;
+    }
+
+    this.stopListening = listen<boolean>('window-maximized', (value) => this.maximized.set(value));
     void this.syncMaximized();
   }
 
-  private async getWindow() {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    return getCurrentWindow();
+  ngOnDestroy(): void {
+    this.stopListening?.();
   }
 
   private async syncMaximized(): Promise<void> {
     try {
-      const win = await this.getWindow();
-      this.maximized.set(await win.isMaximized());
+      this.maximized.set(await invoke<boolean>('window_is_maximized'));
     } catch {
       this.maximized.set(false);
     }
   }
 
-  async minimize(): Promise<void> {
-    const win = await this.getWindow();
-    await win.minimize();
+  minimize(): Promise<void> {
+    return invoke('window_minimize');
   }
 
-  async toggleMaximize(): Promise<void> {
-    const win = await this.getWindow();
-    if (await win.isMaximized()) {
-      await win.unmaximize();
-      this.maximized.set(false);
-    } else {
-      await win.maximize();
-      this.maximized.set(true);
-    }
+  toggleMaximize(): Promise<void> {
+    return invoke(this.maximized() ? 'window_unmaximize' : 'window_maximize');
   }
 
-  async close(): Promise<void> {
-    const win = await this.getWindow();
-    await win.close();
+  close(): Promise<void> {
+    return invoke('window_close');
   }
 }

@@ -70,3 +70,12 @@ textarea {
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
   background: #252528;
 }
+
+/* Janela sem moldura (Electron): regiões arrastáveis da barra superior. */
+[data-drag-region]:not([data-drag-region='false']) {
+  -webkit-app-region: drag;
+}
+
+[data-drag-region='false'] {
+  -webkit-app-region: no-drag;
+}

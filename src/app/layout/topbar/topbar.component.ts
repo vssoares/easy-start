@@ -9,13 +9,13 @@ import { WindowControlsComponent } from '../../components/window-controls/window
   template: `
     <header
       class="flex h-12 shrink-0 items-center border-b border-white/5 bg-app-bg pl-4 pr-4"
-      data-tauri-drag-region
+      data-drag-region
     >
-      <div class="flex shrink-0 items-center" data-tauri-drag-region="false">
+      <div class="flex shrink-0 items-center" data-drag-region="false">
         <ui-window-controls />
       </div>
 
-      <div class="flex flex-1 items-center justify-center gap-3" data-tauri-drag-region>
+      <div class="flex flex-1 items-center justify-center gap-3" data-drag-region>
         <ui-app-update />
         <!-- <label class="relative w-full max-w-md">
           <svg
@@ -35,7 +35,7 @@ import { WindowControlsComponent } from '../../components/window-controls/window
             [(ngModel)]="globalSearch"
             placeholder="Procurar"
             class="w-full rounded-full border border-white/10 bg-app-elevated py-2 pl-10 pr-4 text-sm text-zinc-200 placeholder:text-zinc-500 outline-none transition focus:border-app-accent/50 focus:ring-1 focus:ring-app-accent/30"
-            data-tauri-drag-region="false"
+            data-drag-region="false"
           />
         </label> -->
       </div>

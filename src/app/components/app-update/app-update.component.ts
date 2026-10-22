@@ -10,7 +10,7 @@ import { UpdateService } from '../../services/update.service';
         class="flex items-center gap-2 rounded-full border border-app-accent/40 bg-app-accent/10 px-3 py-1.5 text-sm font-medium text-app-accent-bright transition hover:bg-app-accent/20 disabled:cursor-not-allowed disabled:opacity-60"
         [disabled]="updates.status() === 'installing'"
         (click)="install()"
-        data-tauri-drag-region="false"
+        data-drag-region="false"
       >
         @if (updates.status() === 'installing') {
           <span>Instalando… {{ updates.progress() }}%</span>
@@ -23,14 +23,14 @@ import { UpdateService } from '../../services/update.service';
         }
       </button>
     } @else if (updates.status() === 'checking') {
-      <span class="text-xs text-zinc-500" data-tauri-drag-region="false">Verificando atualizações…</span>
+      <span class="text-xs text-zinc-500" data-drag-region="false">Verificando atualizações…</span>
     } @else if (updates.status() === 'error') {
       <button
         type="button"
         class="max-w-lg rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-left text-xs text-amber-200 transition hover:bg-amber-500/15"
         [title]="updates.errorMessage() ?? ''"
         (click)="recheck()"
-        data-tauri-drag-region="false"
+        data-drag-region="false"
       >
         {{ updates.errorMessage() ?? 'Falha na atualização' }} — tentar de novo
       </button>

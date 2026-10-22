@@ -1,6 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { invoke, isTauri } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { invoke, isDesktop, listen } from '../core/desktop';
 import { PROGRAMS } from '../data/programs.data';
 import {
   InstallBatchResult,
@@ -28,7 +27,7 @@ export class InstallService {
     this.selectedPrograms().filter((program) => !program.wingetId),
   );
 
-  private unlisten: UnlistenFn | null = null;
+  private unlisten: (() => void) | null = null;
 
   isSelected(id: string): boolean {
     return this.selectedIds().has(id);
@@ -69,8 +68,8 @@ export class InstallService {
       return;
     }
 
-    if (!isTauri()) {
-      this.error.set('A instalação só funciona no app desktop (Tauri).');
+    if (!isDesktop()) {
+      this.error.set('A instalação só funciona no app desktop (Electron).');
       return;
     }
 
@@ -85,12 +84,12 @@ export class InstallService {
     this.installing.set(true);
 
     if (this.unlisten) {
-      await this.unlisten();
+      this.unlisten();
       this.unlisten = null;
     }
 
-    this.unlisten = await listen<InstallProgressEvent>('install-progress', (event) => {
-      this.progress.set(event.payload);
+    this.unlisten = listen<InstallProgressEvent>('install-progress', (payload) => {
+      this.progress.set(payload);
     });
 
     const requests: InstallRequest[] = installable.map((program) => ({
@@ -112,7 +111,7 @@ export class InstallService {
     } finally {
       this.installing.set(false);
       if (this.unlisten) {
-        await this.unlisten();
+        this.unlisten();
         this.unlisten = null;
       }
     }
